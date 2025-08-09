@@ -1,0 +1,16 @@
+set dotenv-load := true          # ← **key line**
+set dotenv-filename := ".env"    # (default, but explicit)
+
+export PIPELINE=bamtofastq
+export REVISION=2.1.1
+export REGISTRY_PROXY=nexus-docker-quay.ship.gov.sg
+
+# 1. Download pipeline code (no container images)
+pull:
+    mkdir -p "$BUNDLE_DIR" && \
+    nf-core pipelines download "$PIPELINE" \
+        --revision "$REVISION" \
+        --container-system none \
+        --compress none \
+        --outdir "pipe" --force
+
