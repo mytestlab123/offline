@@ -1,16 +1,55 @@
-set dotenv-load := true          # ← **key line**
-set dotenv-filename := ".env"    # (default, but explicit)
+# Load .env if present (expects at least S3_ROOT)
+set dotenv-load := true
+set dotenv-filename := ".env"
 
-export PIPELINE=bamtofastq
-export REVISION=2.1.1
-export REGISTRY_PROXY=nexus-docker-quay.ship.gov.sg
+# Static since this repo is the pipeline folder itself
+#export PIPELINE="bamtofastq"
+PIPELINE := "bamtofastq"
 
-# 1. Download pipeline code (no container images)
-pull:
-    mkdir -p "$BUNDLE_DIR" && \
-    nf-core pipelines download "$PIPELINE" \
-        --revision "$REVISION" \
-        --container-system none \
-        --compress none \
-        --outdir "pipe" --force
+
+# 1) Prepare: mirror upstream test inputs to S3 and write offline/offline_test.conf + offline/inputs3.csv
+data:
+	./offline/prepare_bamtofastq_offline_test.sh
+
+# 2) Review data pushed to S3 and the generated local files
+check_data:
+	echo "== S3 objects =="; \
+	aws s3 ls "$S3_ROOT/data" --recursive || true; \
+	echo; echo "== offline/inputs3.csv =="; \
+	test -f offline/inputs3.csv && cat offline/inputs3.csv || echo "missing offline/inputs3.csv"; \
+	echo; echo "== offline/offline_test.conf =="; \
+	test -f offline/offline_test.conf && sed -n '1,120p' offline/offline_test.conf || echo "missing offline/offline_test.conf"
+
+
+# 3. Run offline profile to test data and config
+test_online:
+    time nextflow run . -profile podman -c ./offline/offline_test.conf -resume --custom_config_base null
+
+# 5. Mirror entire ~/offline → S3 (online side)
+s3_push:
+    nextflow clean -f; rm -vrf work null .nextflow
+    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "$S3_ROOT/${PIPELINE}/${PIPELINE}" --delete
+
+online:
+	just data check_data test_online s3_push
+
+# 6. Pull mirror inside air-gapped VPC (offline side)
+s3_pull:
+    sudo rm -vrf .nextflow/* work null *.swp ".nextflow/" nxf-tmp*
+    nextflow clean -f; rm -vrf work null .nextflow
+    aws s3 sync  "$S3_ROOT/${PIPELINE}/${PIPELINE}" "$ROOT_DIR/${PIPELINE}/${PIPELINE}" --delete 
+
+
+# 3) Run with the offline test config (no heavy files in repo)
+run:
+	@export NXF_OFFLINE=true NXF_PLUGIN_AUTOINSTALL=false; \
+	time sudo -E nextflow run . -profile podman -c ./offline/offline_test.conf \
+		-offline --outdir /tmp/out-${PIPELINE} -resume --custom_config_base null
+
+# Offline 
+offline:
+	just s3_pull run
+# 4) Quick clean of Nextflow runtime bits (local only)
+clean:
+	rm -rf .nextflow logs .nf* work null || true
 
