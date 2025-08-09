@@ -1,16 +1,34 @@
 set dotenv-load := true          # ← **key line**
 set dotenv-filename := ".env"    # (default, but explicit)
 
-export PIPELINE=bamtofastq
-export REVISION=2.1.1
-export REGISTRY_PROXY=nexus-docker-quay.ship.gov.sg
+# 1. Prepare data and offline test profile
+data:
+    offline/prepare_bamtofastq_offline_test.sh
 
-# 1. Download pipeline code (no container images)
-pull:
-    mkdir -p "$BUNDLE_DIR" && \
-    nf-core pipelines download "$PIPELINE" \
-        --revision "$REVISION" \
-        --container-system none \
-        --compress none \
-        --outdir "pipe" --force
+# 2. Review content of input file
+check_data:
+	aws s3 ls s3://lifebit-user-data-nextflow/offline/bamtofastq/data --recursive; 
+	echo "### Copy inputs3.csv"; 
+	aws s3 cp s3://lifebit-user-data-nextflow/offline/bamtofastq/data/inputs3.csv /tmp/inputs3.csv;
+	echo "### Input Data"; cat /tmp/inputs3.csv;
+	echo "### Offline Config";
+	cat offline/offline_test.config
+
+# 3. Run offline profile to test data and config
+test_online:
+    nextflow run . -profile podman -c ./offline/offline_test.conf
+
+# 5. Mirror entire ~/offline → S3 (online side)
+s3_push:
+    rm -rf work null .nextflow
+    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "$S3_ROOT/${PIPELINE}/${PIPELINE}"   --no-follow-symlinks --exclude "main"  --exclude ".nextflow/*" --delete
+
+# 6. Pull mirror inside air-gapped VPC (offline side)
+s3_pull:
+    sudo rm -rf .nextflow/* /tmp/out* work null *.swp ".nextflow/" nxf-tmp*
+    aws s3 sync  "$S3_ROOT/${PIPELINE}/${PIPELINE}" "$ROOT_DIR/${PIPELINE}/${PIPELINE}" --delete   --no-follow-symlinks --exclude "main"  --exclude ".nextflow/"
+
+# 7. Run the pipeline fully offline
+run:
+    export NXF_OFFLINE=true && time sudo -E nextflow run . -profile podman -c ./offline/offline_test.conf --custom_config_base null
 
