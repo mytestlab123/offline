@@ -9,4 +9,5 @@ nf-core pipelines download "$PIPELINE" --revision "$REVISION" --container-system
 #just pull
 mv pipe/2_1_1 bamtofastq
 mkdir -p bamtofastq/offline
-mv prepare_bamtofastq_offline_test.sh bamtofastq/offline/
+cp -v prepare_bamtofastq_offline_test.sh bamtofastq/offline/
+cp -v ENV bamtofastq/.env
