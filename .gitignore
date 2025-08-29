@@ -1,0 +1,7 @@
+.nextflow
+.nextflow
+.nextflow/*
+*.nextflow/*
+demo/demo
+bat/bat
+bam/bam
