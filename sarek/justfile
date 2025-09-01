@@ -1,7 +1,8 @@
 set dotenv-load := true
 set dotenv-filename := "ENV"
 
-
+#set ARG := " --custom_config_base null --custom_config_version null --pipelines_testdata_base_path null"
+export ARG := " --custom_config_base null --custom_config_version null --pipelines_testdata_base_path null"
 # Prepare S3 inputs + offline config (keeps repo light)
 data:
     echo $PIPELINE
@@ -19,7 +20,7 @@ check_data:
 
 # Quick online run against offline config (uses Nexus proxy)
 test:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE 
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE  {{ARG}}
 
 # Quick online run with stub option
 stub:
