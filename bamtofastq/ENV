@@ -5,10 +5,6 @@ export REGISTRY_PROXY=nexus-docker-quay.ship.gov.sg
 
 export HOME_DIR="${HOME}"
 export OFFLINE_DIR="${HOME_DIR}/offline"
-export BUNDLE_DIR="${OFFLINE_DIR}/${PIPELINE}/pipe"
-
-export INSPECT_JSON="${BUNDLE_DIR}/container.conf"
-export PROXY_CONF="${BUNDLE_DIR}/process_with_nexus_proxy.conf"
 
 export S3SERVICE="s3://trust-dev-team"
 export S3_ROOT="s3://lifebit-user-data-nextflow/offline"
@@ -17,5 +13,6 @@ export ROOT_DIR="${HOME_DIR}/offline"
 export NXF_LOG_FILE=/tmp/runs.log
 export NXF_HOME="$HOME/.nextflow"
 export NXF_WORK=/tmp/nxf-work
-export NXF_PLUGIN_AUTOINSTALL=true
+export NXF_PLUGIN_AUTOINSTALL=false
+
 
