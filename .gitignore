@@ -7,3 +7,6 @@ bat/bat
 bam/bam
 bamtofastq/bamtofastq
 rnaseq/rnaseq
+sarek/sarek
+sarek/data
+ai/
