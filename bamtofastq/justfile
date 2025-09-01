@@ -1,9 +1,6 @@
 set dotenv-load := true
 set dotenv-filename := "ENV"
 
-# Derive pipeline name from this repo's folder
-#PIPELINE := "{{file_name(justfile_directory())}}"
-#PIPELINE := "demo"
 
 # Prepare S3 inputs + offline config (keeps repo light)
 data:
@@ -21,32 +18,36 @@ check_data:
 
 # Quick online run against offline config (uses Nexus proxy)
 test:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-rnaseq -stub
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE 
+
+# Quick online run with stub option
+stub:
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub
 
 # Quick online run against offline config (uses Nexus proxy)
 preview:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-rnaseq -preview
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview
 
 # Push this repo to S3 (code only; exclude heavy dirs)
 push:
     just clean
-    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}"  --delete
+    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}"  --exclude "work" --delete
 
 # Pull mirror inside air-gapped VPC (offline side)
 pull:
     just clean
-    aws s3 sync "${S3_ROOT}/$PIPELINE/$PIPELINE" "${ROOT_DIR}/$PIPELINE/$PIPELINE" --delete
+    aws s3 sync "${S3_ROOT}/$PIPELINE/$PIPELINE" "${ROOT_DIR}/$PIPELINE/$PIPELINE"  --exclude "work" --delete
 
 # Fully offline run
 run:
     nextflow run . -profile test -offline -resume
 
 # Stub run
-stub:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-demo -stub
+stub2:
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub
 
 preview2:
-    nextflow run . -profile test -resume  -w /tmp/work-rnaseq -preview
+    nextflow run . -profile test -resume  -w /tmp/work-$PIPELINE -preview
 
 # Convenience groups
 online:

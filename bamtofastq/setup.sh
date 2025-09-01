@@ -4,6 +4,7 @@ set -Eeuo pipefail
 # -------------------------------
 # Defaults (can be overridden by env or args)
 # -------------------------------
+source ENV
 PIPELINE="${PIPELINE:-demo}"
 REVISION="${REVISION:-1.0.1}"
 VER="${VER:-${REVISION//./_}}"
@@ -90,9 +91,9 @@ if [[ "$need_stage" == "1" ]]; then
   if [[ ! -d "${BUNDLE_DIR}/${VER}" ]]; then
     echo "ERROR: expected ${BUNDLE_DIR}/${VER} not found"; exit 1
   fi
-
   echo "[i] Staging pipeline sources into $(pwd)"
-  rsync -a --delete "${BUNDLE_DIR}/${VER}/" .
+  rsync -a "${BUNDLE_DIR}/${VER}/" .
+  #rsync -a --delete "${BUNDLE_DIR}/${VER}/" .
 else
   echo "[i] Pipeline files already present; skipping download (use --force to re-download)."
 fi
@@ -103,11 +104,11 @@ mkdir -p conf
 # -------------------------------
 # Copy companion files from script dir (idempotent with rsync)
 # -------------------------------
-set -x
-[[ -f "${SCRIPT_DIR}/justfile"    ]] && rsync -av "${SCRIPT_DIR}/justfile" .
-[[ -f "${SCRIPT_DIR}/ENV"         ]] && rsync -av "${SCRIPT_DIR}/ENV" .env
-[[ -f "${SCRIPT_DIR}/test.config" ]] && rsync -av "${SCRIPT_DIR}/test.config" conf/
-set +x
+#set -x
+[[ -f "${SCRIPT_DIR}/justfile"    ]] && rsync -a "${SCRIPT_DIR}/justfile" .
+[[ -f "${SCRIPT_DIR}/ENV"         ]] && rsync -a "${SCRIPT_DIR}/ENV" ENV 
+[[ -f "${SCRIPT_DIR}/test.config" ]] && rsync -a "${SCRIPT_DIR}/test.config" conf/
+#set +x
 
 # -------------------------------
 # Clean up downloaded bundle (optional)
