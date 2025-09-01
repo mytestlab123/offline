@@ -2,11 +2,12 @@ set dotenv-load := true
 set dotenv-filename := ".env"
 
 # Derive pipeline name from this repo's folder
-PIPELINE := "{{file_name(justfile_directory())}}"
+#PIPELINE := "{{file_name(justfile_directory())}}"
+PIPELINE := "demo"
 
 # Prepare S3 inputs + offline config (keeps repo light)
 data:
-    ./offline/prepare_offline_test.sh
+    echo $PIPELINE
 
 # Inspect created artifacts
 check_data:
@@ -19,32 +20,42 @@ check_data:
     echo; echo "== offline/offline_test.conf =="; test -f offline/offline_test.conf && sed -n '1,120p' offline/offline_test.conf || echo "missing"
 
 # Quick online run against offline config (uses Nexus proxy)
-test_online:
-    time nextflow run . -profile podman -c ./offline/offline_test.conf -resume -c ./offline/process_fix.conf
+test:
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-rnaseq -stub
+
+# Quick online run against offline config (uses Nexus proxy)
+preview:
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-rnaseq -preview
 
 # Push this repo to S3 (code only; exclude heavy dirs)
-s3_push:
-    nextflow clean -f; export PIPELINE=demo; echo ${PIPELINE}; 
-    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}"  
+push:
+    just clean
+    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}"  --delete
 
 # Pull mirror inside air-gapped VPC (offline side)
-s3_pull:
-    sudo rm -vrf .nextflow/* work null *.swp ".nextflow/" nxf-tmp* || true
-    nextflow clean -f; rm -vrf work null .nextflow || true
+pull:
+    just clean
     aws s3 sync "${S3_ROOT}/{{PIPELINE}}/{{PIPELINE}}" "${ROOT_DIR}/{{PIPELINE}}/{{PIPELINE}}" --delete
 
 # Fully offline run
 run:
-    @export NXF_OFFLINE=true NXF_PLUGIN_AUTOINSTALL=false; \
-    time sudo -E nextflow run . -profile podman -c ./offline/offline_test.conf -offline --outdir /tmp/out -resume --custom_config_base '' -c ./offline/process_fix.conf
+    nextflow run . -profile test -offline -resume
+
+# Stub run
+stub:
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-demo -stub
+
+preview2:
+    nextflow run . -profile test -resume  -w /tmp/work-rnaseq -preview
 
 # Convenience groups
 online:
-    just data check_data test_online s3_push
+    just test push
 
 offline:
-    just s3_pull run
+    just pull run
 
 # Local cleanup
 clean:
-    rm -rf .nextflow logs .nf* work null || true
+    nextflow clean -f; rm -rf  /tmp/nxf-work/ .nextflow null
+
