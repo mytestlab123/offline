@@ -14,6 +14,7 @@ Key Ideas
 Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
+- `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
 - `<pipeline>/` (demo, rnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
 
 Per‑Pipeline Quick Start
@@ -43,6 +44,10 @@ Choosing a Quay‑only Revision (manual, one‑time)
 - Review `/tmp/out/sarek/<tag>/container.conf` and `/tmp/out/sarek/selected_tag.txt`.
 - Repeat for `rnaseq`, `scrnaseq` as needed.
 
+Test‑Data Mirroring (implemented)
+- `bash common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config`
+- Writes `offline/inputs3.csv` and `offline/offline_test.conf`; uploads assets to `s3://$S3_ROOT/$PIPELINE/data/`.
+
 Notes
 - ARG is passed to all runs to avoid remote config fetches:
   `--custom_config_base null --custom_config_version null --pipelines_testdata_base_path null`
@@ -53,4 +58,3 @@ Future Work (agreed)
 - Nextflow pinning per environment: set `NXF_VER` in your `~/.env` (not in pipeline ENV).
   - Dev: `export NXF_VER=24.04.4`
   - Prod: `export NXF_VER=24.10.5`
-- Unify test‑data mirroring: replace per‑pipeline `prepare_offline_test.sh` with `common/data/mirror_testdata.sh` (same flags: `--rows`, `--param-name`, `--conf`). Pipelines call the common script; delete duplicates afterward.

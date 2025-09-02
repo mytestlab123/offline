@@ -20,6 +20,7 @@ User Story
 Architecture
 - Shared: `common/pipeline/setup.sh` stages nf-core sources; symlinks `ENV`, `justfile`, and `conf/test.config` into the staged folder. S3 sync uses `--follow-symlinks`.
 - Per pipeline: `ENV`, `test.config`, and symlinks to shared `setup.sh` and `justfile`.
+- Data mirroring: `common/data/mirror_testdata.sh` produces `offline/inputs3.csv` and uploads small assets to `s3://$S3_ROOT/$PIPELINE/data/`.
 - Quay-only selection: manual script `common/quay/select_quay_revision.sh` using `nextflow inspect` to reject wave containers.
 
 Operational Flows
@@ -57,8 +58,3 @@ Future Work (approved)
   - Dev: `NXF_VER=24.04.4`; Prod: `NXF_VER=24.10.5`.
   - Placement: set in operator `~/.env` (keeps pipeline ENV stable and portable).
   - Success: `nextflow -version` prints the pinned version on both Dev and Prod before runs.
-
-- Unify test‑data mirroring
-  - Add `common/data/mirror_testdata.sh` implementing current per‑pipeline logic (flags: `--rows`, `--param-name`, `--conf`).
-  - Update pipelines to call the common script; remove duplicated `prepare_offline_test.sh`.
-  - Success: each pipeline produces `offline/inputs3.csv` and syncs assets to `s3://$S3_ROOT/$PIPELINE/data/` identically via the shared script.
