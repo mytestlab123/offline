@@ -1,0 +1,77 @@
+set dotenv-load := true
+set dotenv-filename := "ENV"
+set shell := ["bash", "-cu"]
+
+export ARG := " --custom_config_base null --custom_config_version null --pipelines_testdata_base_path null"
+
+# Print pipeline name
+data:
+    @set -euo pipefail; \
+    echo $PIPELINE
+
+# Inspect S3 dataset and local offline artifacts
+check_data:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    S3_PIPE_ROOT="${S3_ROOT}/${PIPELINE}"; \
+    echo "== S3 path =="; echo "${S3_PIPE_ROOT}/data"; \
+    echo "== S3 objects =="; aws s3 ls "${S3_PIPE_ROOT}/data" --recursive || true; \
+    echo; echo "== offline/inputs3.csv =="; test -f offline/inputs3.csv && cat offline/inputs3.csv || echo "missing"; \
+    echo; echo "== offline/offline_test.conf =="; test -f offline/offline_test.conf && sed -n '1,120p' offline/offline_test.conf || echo "missing"
+
+# Online run (uses quay registry override)
+test:
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE {{ARG}}
+
+# Online stub run
+stub:
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub {{ARG}}
+
+# Online preview
+preview:
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview {{ARG}}
+
+# Upload code/config to S3 (excludes work/)
+up:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}" --follow-symlinks --exclude ".nextflow/*" --delete
+
+# Download code/config from S3 (excludes work/)
+down:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${ROOT_DIR:?set ROOT_DIR in ENV or shell}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    aws s3 sync "${S3_ROOT}/$PIPELINE/$PIPELINE" "${ROOT_DIR}/$PIPELINE/$PIPELINE" --follow-symlinks --exclude ".nextflow/*" --delete
+
+# Offline full run
+run:
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE {{ARG}}
+
+# Offline stub run
+stub2:
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub {{ARG}}
+
+# Offline preview
+preview2:
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -preview {{ARG}}
+
+# chmod +x -c /home/ssm-user/offline/rnaseq/rnaseq/bin/*
+execpermission:
+    chmod +x -c bin/*
+
+# Convenience groups
+online:
+    just test up
+
+offline:
+    just down run
+
+# Local cleanup
+clean:
+    nextflow clean -f; rm -rf /tmp/nxf-work/ .nextflow null
+
+## (Plugins and Quay helper recipes removed by request; use simple shell commands instead.)
