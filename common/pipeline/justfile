@@ -75,3 +75,20 @@ clean:
     nextflow clean -f; rm -rf /tmp/nxf-work/ .nextflow null
 
 ## (Plugins and Quay helper recipes removed by request; use simple shell commands instead.)
+
+# Verify environment (NXF_VER, PIPELINE, REVISION, S3/ROOT, NXF paths)
+verify_env:
+    @set -euo pipefail; \
+    echo "PIPELINE=${PIPELINE:-}"; \
+    echo "REVISION=${REVISION:-}"; \
+    echo "S3_ROOT=${S3_ROOT:-}"; \
+    echo "ROOT_DIR=${ROOT_DIR:-}"; \
+    echo "NXF_HOME=${NXF_HOME:-$HOME/.nextflow}"; \
+    echo "NXF_WORK=${NXF_WORK:-}"; \
+    echo "NXF_VER=${NXF_VER:-(unset)}"; \
+    nextflow -version || true
+
+# Verify test.config symlink
+verify_config:
+    @set -euo pipefail; \
+    if [ -L conf/test.config ]; then echo "[✔] conf/test.config is symlink -> $$(readlink conf/test.config)"; else echo "[x] conf/test.config is not a symlink"; exit 1; fi

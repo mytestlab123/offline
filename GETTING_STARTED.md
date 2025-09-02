@@ -19,6 +19,10 @@ Example 1: demo (basic)
    - just preview  or  just stub  or  just test
 6) Run (offline)
    - just down; just run
+8) Verify environment
+   - just verify_env; just verify_config
+7) Verify environment
+   - just verify_env; just verify_config
 
 Example 2: rnaseq (complex)
 1) Pick quay-only revision (manual, one-time)
@@ -37,6 +41,8 @@ Example 2: rnaseq (complex)
    - just preview  or  just stub  or  just test
 7) Run (offline)
    - just down; just run
+7) Verify environment
+   - just verify_env; just verify_config
 
 Notes
 - Always: source ~/.env; source ENV before running `just` or `setup.sh`.
