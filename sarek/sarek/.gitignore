@@ -1,0 +1,14 @@
+.nextflow*
+work/
+data/
+results/
+.DS_Store
+testing/
+testing*
+*.pyc
+*.code-workspace
+.nf-test*
+.nf-test/
+test-datasets/
+test.tap
+test.xml
