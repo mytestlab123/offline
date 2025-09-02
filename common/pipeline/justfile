@@ -39,6 +39,13 @@ data_refs:
 data:
     just data_input data_refs
 
+# Mirror an arbitrary single URL param to S3 (e.g., contrasts)
+data_param PARAM:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    bash ../../common/data/mirror_param_url.sh --param-name "{{PARAM}}" --conf ./conf/test.config --pipeline "$PIPELINE"
+
 # Verify config has S3 URIs for key params
 verify_offline:
     @set -euo pipefail; \
