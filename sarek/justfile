@@ -1,68 +1,70 @@
 set dotenv-load := true
 set dotenv-filename := "ENV"
+set shell := ["bash", "-cu"]
 
-#set ARG := " --custom_config_base null --custom_config_version null --pipelines_testdata_base_path null"
 export ARG := " --custom_config_base null --custom_config_version null --pipelines_testdata_base_path null"
-# Prepare S3 inputs + offline config (keeps repo light)
+
+# Print pipeline name
 data:
+    @set -euo pipefail; \
     echo $PIPELINE
 
-# Inspect created artifacts
+# Inspect data on S3 and locally
 check_data:
     @set -euo pipefail; \
-    : "${PIPELINE:?set PIPELINE in ENV}"; \
-    : "${S3_ROOT:?set S3_ROOT in ENV}"; \
+    : "${PIPELINE:?set PIPELINE in Pipeline-ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
     S3_PIPE_ROOT="${S3_ROOT}/${PIPELINE}"; \
     echo "== S3 path =="; echo "${S3_PIPE_ROOT}/data"; \
     echo "== S3 objects =="; aws s3 ls "${S3_PIPE_ROOT}/data" --recursive || true; \
     echo; echo "== local data/fastq_single.csv =="; test -f data/fastq_single.csv && cat data/fastq_single.csv || echo "missing"; \
     echo; echo "== remote fastq_single.csv =="; aws s3 cp "${S3_PIPE_ROOT}/data/fastq_single.csv" - || echo "missing on S3"
 
-# Quick online run against offline config (uses Nexus proxy)
+# Online run (uses quay registry override)
 test:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE  {{ARG}}
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE {{ARG}}
 
-# Quick online run with stub option
+# Online stub run
 stub:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub {{ARG}}
 
-# Quick online run with preview option
+# Online preview
 preview:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview {{ARG}}
 
-# Push this repo to S3 (code only; exclude heavy dirs)
-push:
-    just clean
-    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}"  --exclude "work" --delete
+# Upload code/config to S3 (excludes work/)
+up:
+    @set -euo pipefail; \
+    aws s3 sync "${HOME}/offline/${PIPELINE}/${PIPELINE}" "${S3_ROOT}/${PIPELINE}/${PIPELINE}" --delete --exclude ".nextflow/*"
 
-# Pull mirror inside air-gapped VPC (offline side)
-pull:
-    just clean
-    aws s3 sync "${S3_ROOT}/$PIPELINE/$PIPELINE" "${ROOT_DIR}/$PIPELINE/$PIPELINE"  --exclude "work" --delete
+# Download code/config from S3 (excludes work/)
+down:
+    @set -euo pipefail; \
+    aws s3 sync "${S3_ROOT}/$PIPELINE/$PIPELINE" "${ROOT_DIR}/$PIPELINE/$PIPELINE" --delete --exclude ".nextflow/*"
 
-# Fully offline run
+# Offline full run
 run:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE 
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE {{ARG}}
 
-# Stub run
+# Offline stub run
 stub2:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub {{ARG}}
 
-# Preview run
+# Offline preview
 preview2:
-    nextflow run . -profile test  -offline -resume -w ${HOME}/work-$PIPELINE -preview
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -preview {{ARG}}
 
 # chmod +x -c /home/ssm-user/offline/rnaseq/rnaseq/bin/*
 execpermission:
-     chmod +x -c bin/*
+    chmod +x -c bin/*
 
 # Convenience groups
 online:
-    just test push
+    just test up
 
 offline:
-    just pull run
+    just down run
 
 # Local cleanup
 clean:
-    nextflow clean -f; rm -rf  /tmp/nxf-work/ .nextflow null
+    nextflow clean -f; rm -rf /tmp/nxf-work/ .nextflow null

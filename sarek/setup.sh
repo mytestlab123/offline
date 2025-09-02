@@ -56,7 +56,7 @@ VER="${VER:-${REVISION//./_}}"
 # -------------------------------
 # Preconditions
 # -------------------------------
-for c in nf-core nextflow aws podman rsync; do
+for c in nf-core nextflow aws docker rsync; do
   command -v "$c" >/dev/null 2>&1 || { echo "ERROR: '$c' not found"; exit 1; }
 done
 
@@ -98,17 +98,21 @@ else
   echo "[i] Pipeline files already present; skipping download (use --force to re-download)."
 fi
 
-# Ensure conf/ exists for config copy
+# Ensure conf/ exists for symlink target
 mkdir -p conf
 
 # -------------------------------
-# Copy companion files from script dir (idempotent with rsync)
+# Symlink companion files from script dir
 # -------------------------------
-#set -x
-[[ -f "${SCRIPT_DIR}/justfile"    ]] && rsync -a "${SCRIPT_DIR}/justfile" .
-[[ -f "${SCRIPT_DIR}/ENV"         ]] && rsync -a "${SCRIPT_DIR}/ENV" ENV 
-[[ -f "${SCRIPT_DIR}/test.config" ]] && rsync -a "${SCRIPT_DIR}/test.config" conf/
-#set +x
+if [[ -f "${SCRIPT_DIR}/justfile" ]]; then
+  rm -f justfile && ln -sv "${SCRIPT_DIR}/justfile" justfile
+fi
+if [[ -f "${SCRIPT_DIR}/ENV" ]]; then
+  rm -f ENV && ln -sv "${SCRIPT_DIR}/ENV" ENV
+fi
+if [[ -f "${SCRIPT_DIR}/test.config" ]]; then
+  rm -f conf/test.config && ln -sv "${SCRIPT_DIR}/test.config" conf/test.config
+fi
 
 # -------------------------------
 # Clean up downloaded bundle (optional)
@@ -116,4 +120,3 @@ mkdir -p conf
 rm -rf "${BUNDLE_DIR}"
 
 echo "[i] Setup completed for ${PIPELINE} ${REVISION} in $(pwd)"
-
