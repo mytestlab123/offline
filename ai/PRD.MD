@@ -52,3 +52,13 @@ References
 - plan_Amit_update.md (decisions: Docker-only, single ENV, no hardening, symlink strategy)
 - prompt.md (quay-only revision discovery with `nextflow inspect`)
 
+Future Work (approved)
+- Pin Nextflow version per environment
+  - Dev: `NXF_VER=24.04.4`; Prod: `NXF_VER=24.10.5`.
+  - Placement: set in operator `~/.env` (keeps pipeline ENV stable and portable).
+  - Success: `nextflow -version` prints the pinned version on both Dev and Prod before runs.
+
+- Unify test‑data mirroring
+  - Add `common/data/mirror_testdata.sh` implementing current per‑pipeline logic (flags: `--rows`, `--param-name`, `--conf`).
+  - Update pipelines to call the common script; remove duplicated `prepare_offline_test.sh`.
+  - Success: each pipeline produces `offline/inputs3.csv` and syncs assets to `s3://$S3_ROOT/$PIPELINE/data/` identically via the shared script.

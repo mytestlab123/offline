@@ -49,3 +49,8 @@ Notes
 - Use `--follow-symlinks` in S3 sync to avoid stale symlink stubs.
 - For offline hosts, ensure Nexus Proxy access to quay is working (pre‑validated).
 
+Future Work (agreed)
+- Nextflow pinning per environment: set `NXF_VER` in your `~/.env` (not in pipeline ENV).
+  - Dev: `export NXF_VER=24.04.4`
+  - Prod: `export NXF_VER=24.10.5`
+- Unify test‑data mirroring: replace per‑pipeline `prepare_offline_test.sh` with `common/data/mirror_testdata.sh` (same flags: `--rows`, `--param-name`, `--conf`). Pipelines call the common script; delete duplicates afterward.
