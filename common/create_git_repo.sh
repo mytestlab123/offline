@@ -1,11 +1,11 @@
 
 #!/usr/bin/env bash
-# Usage: ./create_repo.sh <repo_name> [visibility] [group_id]
-# Example: ./create_repo.sh myservice public 2
+# Usage: ./create_git_repo.sh <repo_name> [visibility] [group_id]
+# Example: ./create_git_repo.sh myservice public 2
 
 set -euo pipefail
 
-GITLAB_HOST="100.123.206.229"           # ← change to your server
+GITLAB_HOST="${GITLAB_HOST:-100.123.206.229}"  # override with env GITLAB_HOST
 VISIBILITY="${2:-private}"              # private | internal | public
 GROUP_ID="${3:-2}"                      # default to 2 if not given
 REPO_NAME="${1:-}"; [[ -z $REPO_NAME ]] && { echo "repo_name required"; exit 1; }
@@ -31,5 +31,4 @@ git remote add origin "$token_url" 2>/dev/null || git remote set-url origin "$to
 git push -u origin "$(git symbolic-ref --short HEAD)"
 
 echo "✅  Pushed to $http_url"
-
 
