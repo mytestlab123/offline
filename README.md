@@ -15,7 +15,7 @@ Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
 - `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
-- `<pipeline>/` (demo, rnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
+- `<pipeline>/` (demo, rnaseq, scrnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
 
 Per‑Pipeline Quick Start
 1) cd `<pipeline>`; `source ~/.env; source ENV`

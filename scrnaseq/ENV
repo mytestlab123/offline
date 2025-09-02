@@ -1,0 +1,18 @@
+# .env
+export PIPELINE=scrnaseq
+export REVISION=2.7.1
+export REGISTRY_PROXY=nexus-docker-quay.ship.gov.sg
+
+export HOME_DIR="${HOME}"
+export OFFLINE_DIR="${HOME_DIR}/offline"
+
+export S3SERVICE="s3://trust-dev-team"
+export S3_ROOT="s3://lifebit-user-data-nextflow/offline"
+export ROOT_DIR="${HOME_DIR}/offline"
+
+export NXF_LOG_FILE=/tmp/runs.log
+export NXF_HOME="$HOME/.nextflow"
+export NXF_WORK=/tmp/nxf-work
+export NXF_PLUGIN_AUTOINSTALL=false
+
+

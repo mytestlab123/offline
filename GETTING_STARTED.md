@@ -42,6 +42,28 @@ Example 2: rnaseq (complex)
 7) Run (offline)
    - just down; just run
 7) Verify environment
+- just verify_env; just verify_config
+
+Example 3: scrnaseq (scRNA-seq)
+1) Pick quay-only revision (manual, one-time)
+   - bash common/quay/select_quay_revision.sh --pipeline scrnaseq
+2) Set env and stage
+   - cd scrnaseq; source ~/.env; source ENV
+   - ./setup.sh -f; cd scrnaseq
+3) Verify test config includes S3 inputs + refs
+   - rg -n "params\.input|fasta|gtf|aligner|protocol" conf/test.config
+   - diff -u ../test.config conf/test.config || echo "OK: symlink in place"
+4) Mirror small test data (optional refresh)
+   - bash ../../common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config
+   - bash ../../common/data/mirror_testdata.sh --rows 1 --param-name fasta --conf ./conf/test.config
+   - bash ../../common/data/mirror_testdata.sh --rows 1 --param-name gtf   --conf ./conf/test.config
+5) Check data
+   - just check_data
+6) Run (online)
+   - just preview  or  just stub  or  just test
+7) Run (offline)
+   - just down; just run
+7) Verify environment
    - just verify_env; just verify_config
 
 Notes
