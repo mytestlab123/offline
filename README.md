@@ -60,11 +60,11 @@ More
 - See GETTING_STARTED.md for step‑by‑step demos (demo + rnaseq).
 
 GitLab Repo Creation (optional)
-- Script: `common/create_git_repo.sh`
+- Script: `common/gitlab/create_repo.sh`
 - Requires: `GITLAB_PAT` env; optional `GITLAB_HOST` (defaults to 100.123.206.229)
 - Usage:
-  - `GITLAB_PAT=... GITLAB_HOST=<host> bash common/create_git_repo.sh <repo_name> [visibility] [group_id]`
-  - Example: `GITLAB_PAT=... bash common/create_git_repo.sh myservice public 2`
+  - `GITLAB_PAT=... GITLAB_HOST=<host> bash common/gitlab/create_repo.sh <repo> [visibility] [group_id] <SRC_DIR> <DST_DIR> [ENV_FILE] [--delete-existing] [--force]`
+  - Example: `GITLAB_PAT=... bash common/gitlab/create_repo.sh myservice public 2 "$HOME/offline/demo/demo" "$HOME/git/myservice" "$HOME/ENV" --delete-existing --force`
 
 Future Work (agreed)
 - Nextflow pinning per environment: set `NXF_VER` in your `~/.env` (not in pipeline ENV).
