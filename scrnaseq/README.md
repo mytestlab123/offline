@@ -4,12 +4,14 @@
 - (Optional pin) export NXF_VER=24.04.4
 - ./setup.sh -f; cd scrnaseq
 - rg -n "params\.input|fasta|gtf|aligner|protocol" conf/test.config
-- diff -u ../test.config conf/test.config || echo "OK: symlink"
-- just check_data
-- Online: just preview  (or: just stub / just test)
+- just verify_config   # upstream regular file before finalize
+- Data prep (explicit):
+  - just data_input      # samplesheet -> offline/inputs3.csv + S3
+  - just data_refs       # fasta + gtf -> S3
+  - just check_data
+- Update conf/test.config with S3 URIs for input/fasta/gtf and set offline toggles
+- just verify_offline   # optional sanity check for s3:// URIs
+- just finalize_config  # promote to ../test.config and link back
+- Online:  just preview  (or: just stub / just test)
 - Offline: just down; just run
-- Optional data refresh:
-  - bash ../../common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config
-  - (refs) bash ../../common/data/mirror_testdata.sh --rows 1 --param-name fasta --conf ./conf/test.config
-  - (refs) bash ../../common/data/mirror_testdata.sh --rows 1 --param-name gtf   --conf ./conf/test.config
 - Quay tag (one-time): bash ../../common/quay/select_quay_revision.sh --pipeline scrnaseq

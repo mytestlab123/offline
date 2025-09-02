@@ -20,17 +20,45 @@ check_data:
     echo; echo "== offline/inputs3.csv =="; test -f offline/inputs3.csv && cat offline/inputs3.csv || echo "missing"; \
     echo; echo "== offline/offline_test.conf =="; test -f offline/offline_test.conf && sed -n '1,120p' offline/offline_test.conf || echo "missing"
 
+# Mirror samplesheet (input) from tests config to S3 and create offline/inputs3.csv
+data_input:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    bash ../../common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config --pipeline "$PIPELINE"
+
+# Mirror references (fasta, gtf) to S3
+data_refs:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    bash ../../common/data/mirror_param_url.sh --param-name fasta --conf ./conf/test.config --pipeline "$PIPELINE"; \
+    bash ../../common/data/mirror_param_url.sh --param-name gtf   --conf ./conf/test.config --pipeline "$PIPELINE"
+
+# Convenience: run both input+refs mirroring
+data:
+    just data_input data_refs
+
+# Verify config has S3 URIs for key params
+verify_offline:
+    @set -euo pipefail; \
+    rg -n "^[[:space:]]*(params\.)?(input|fasta|gtf)[[:space:]]*=[[:space:]]*'s3://" conf/test.config || { echo "[x] Missing S3 URIs for one or more params (input/fasta/gtf)"; exit 1; }
+
+# Convenience: run mirroring then show data
+prep:
+    just data check_data
+
 # Online run (uses quay registry override)
 test:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE {{ARG}}
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE $ARG
 
 # Online stub run
 stub:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub {{ARG}}
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub-run $ARG
 
 # Online preview
 preview:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview {{ARG}}
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview $ARG
 
 # Upload code/config to S3 (excludes work/)
 up:
@@ -49,15 +77,15 @@ down:
 
 # Offline full run
 run:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE {{ARG}}
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE $ARG
 
 # Offline stub run
 stub2:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub {{ARG}}
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub-run $ARG
 
 # Offline preview
 preview2:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -preview {{ARG}}
+    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -preview $ARG
 
 # chmod +x -c /home/ssm-user/offline/rnaseq/rnaseq/bin/*
 execpermission:
@@ -91,4 +119,34 @@ verify_env:
 # Verify test.config symlink
 verify_config:
     @set -euo pipefail; \
-    if [ -L conf/test.config ]; then echo "[✔] conf/test.config is symlink -> $$(readlink conf/test.config)"; else echo "[x] conf/test.config is not a symlink"; exit 1; fi
+    if [ -L conf/test.config ]; then \
+      echo "[✔] conf/test.config is symlink -> $$(readlink conf/test.config)"; \
+    elif [ -f conf/test.config ]; then \
+      echo "[i] conf/test.config is a regular file (upstream) — OK before finalize"; \
+    else \
+      echo "[x] conf/test.config missing"; exit 1; \
+    fi
+
+# Promote upstream conf/test.config to root test.config and link back
+finalize_config:
+    @set -euo pipefail; \
+    STAGE_DIR="$PWD"; \
+    ROOT_DIR="$PWD/.."; \
+    TEST_STAGE="$STAGE_DIR/conf/test.config"; \
+    [[ -f "$TEST_STAGE" ]] || { echo "ERROR: $TEST_STAGE not a regular file (already linked or missing)"; exit 2; }; \
+    TS="$$(date +%Y%m%d%H%M%S)"; \
+    BK="/tmp/$${PIPELINE:-pipeline}-conf.test.config.$$TS"; \
+    echo "[i] Backup: $$TEST_STAGE -> $$BK"; \
+    cp -a "$$TEST_STAGE" "$$BK"; \
+    echo "[i] Remove stage conf/test.config"; \
+    rm -f "$$TEST_STAGE"; \
+    DEST_ROOT="$$ROOT_DIR/test.config"; \
+    if [ -e "$$DEST_ROOT" ]; then \
+      echo "[i] Root test.config exists; backing up"; \
+      cp -a "$$DEST_ROOT" "$$DEST_ROOT.bak-$$TS"; \
+    fi; \
+    echo "[i] Promote to root: $$BK -> $$DEST_ROOT"; \
+    cp -a "$$BK" "$$DEST_ROOT"; \
+    echo "[i] Link back: conf/test.config -> $$DEST_ROOT"; \
+    ln -sv "$$DEST_ROOT" "$$TEST_STAGE"; \
+    echo "[✔] Finalized: conf/test.config now links to root test.config"
