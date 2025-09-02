@@ -36,7 +36,7 @@ data_refs:
     bash ../../common/data/mirror_param_url.sh --param-name gtf   --conf ./conf/test.config --pipeline "$PIPELINE"
 
 # Convenience: run both input+refs mirroring
-data:
+mirror:
     just data_input data_refs
 
 # Mirror an arbitrary single URL param to S3 (e.g., contrasts)
@@ -53,7 +53,7 @@ verify_offline:
 
 # Convenience: run mirroring then show data
 prep:
-    just data check_data
+    just mirror check_data
 
 # Online run (uses quay registry override)
 test:

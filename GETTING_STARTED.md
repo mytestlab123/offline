@@ -56,7 +56,7 @@ Example 3: scrnaseq (scRNA-seq)
 4) Mirror small test data (explicit, one-time per change)
    - just data_input      # samplesheet -> offline/inputs3.csv + S3 upload
    - just data_refs       # fasta + gtf -> S3 upload
-   - just check_data
+   - just check_data      # or use `just mirror` to run both mirroring steps
    - Optional: just verify_offline  # ensure S3 URIs present (after you update conf/test.config)
 5) Update conf/test.config to point to S3 URIs (input/fasta/gtf) and set offline toggles
 6) Finalize test.config (after data is 100% ready)
