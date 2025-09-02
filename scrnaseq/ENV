@@ -14,5 +14,3 @@ export NXF_LOG_FILE=/tmp/runs.log
 export NXF_HOME="$HOME/.nextflow"
 export NXF_WORK=/tmp/nxf-work
 export NXF_PLUGIN_AUTOINSTALL=false
-
-
