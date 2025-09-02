@@ -108,3 +108,76 @@ cat > README.md <<EOF
 **Revision**: \`${REVISION}\`
 
 > This main branch is intentionally minimal. The full pipeline sources live on the branch **\`${REVISION}\`**.
+EOF
+
+# Big-file friendly .gitignore
+cat > .gitignore <<'GITIGNORE'
+.nextflow/
+.nextflow.*
+work/
+results/
+.nf-test/
+.nf-work/
+trace.txt
+timeline.html
+report.html
+
+*.fastq*
+*.fq*
+*.bam
+*.bai
+*.cram
+*.crai
+*.vcf*
+*.bcf
+*.tbi
+*.fasta
+*.fa
+*.fai
+*.gtf*
+*.gff*
+*.bed*
+*.bw
+*.nii*
+*.h5
+
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.xz
+*.bz2
+*.7z
+
+node_modules/
+.venv/
+__pycache__/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+GITIGNORE
+
+git add . >/dev/null
+git commit -qm "chore: bootstrap minimal main with README and .gitignore" || true
+
+# Wire remote with token (demo only; prefer credential helper in prod)
+token_url="${http_url/\/\//\/\/gitlab:$GITLAB_PAT@}"
+git remote add origin "$token_url" 2>/dev/null || git remote set-url origin "$token_url"
+git push -u origin main
+
+# Create revision branch and sync full source there
+git checkout -q -b "${REVISION}" || git switch -c "${REVISION}"
+
+rsync -av --delete \
+  --exclude ".git/" --exclude ".nextflow/" --exclude "work/" \
+  "${SRC_DIR}/" "${DST_DIR}/" >/dev/null
+
+git add .gitignore README.md
+git add -A
+git commit -qm "feat: import sources from ${SRC_DIR} (rev ${REVISION})" || true
+git push -u origin "${REVISION}"
+
+echo "✅ Created ${REPO_NAME}; pushed minimal main and branch ${REVISION}"
+echo "   URL: ${http_url}"
+
