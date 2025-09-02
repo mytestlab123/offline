@@ -1,9 +1,15 @@
-# Offline Nextflow in AWS (KISS)
+# Offline Nextflow in AWS 
 
 Purpose
 - Run nf-core pipelines in AWS with two modes:
   - Dev (online): uses quay.io directly, Docker engine.
   - Prod (offline): code/data from S3; containers via Nexus Proxy; Docker engine.
+
+For AI Agent and Task Management
+- Always use "AGENTS.md"
+- For any task/PR/progress, read all files from "ai" folder
+- Amit/ Dev will add tasks in "@ai/tasks.md"
+- AI Agent/ Codex will update all other files in "@ai"
 
 Key Ideas
 - Single ENV per pipeline (no global auto-load). Source manually: `source ~/.env; source ENV`.
@@ -15,7 +21,7 @@ Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
 - `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
-- `<pipeline>/` (demo, rnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
+- `<pipeline>/` (demo, rnaseq, scrnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
 
 Per‑Pipeline Quick Start
 1) cd `<pipeline>`; `source ~/.env; source ENV`

@@ -1,0 +1,116 @@
+{
+    "name": "nf-core/scrnaseq",
+    "homePage": "https://github.com/nf-core/scrnaseq",
+    "repos": {
+        "https://github.com/nf-core/modules.git": {
+            "modules": {
+                "nf-core": {
+                    "cellranger/count": {
+                        "branch": "master",
+                        "git_sha": "90dad5491658049282ceb287a3d7732c1ce39837",
+                        "installed_by": ["modules"]
+                    },
+                    "cellranger/mkgtf": {
+                        "branch": "master",
+                        "git_sha": "90dad5491658049282ceb287a3d7732c1ce39837",
+                        "installed_by": ["modules"]
+                    },
+                    "cellranger/mkref": {
+                        "branch": "master",
+                        "git_sha": "3549a361ce3401b6afd238a266389d78392a53f6",
+                        "installed_by": ["modules"]
+                    },
+                    "cellranger/mkvdjref": {
+                        "branch": "master",
+                        "git_sha": "e66183d2ab6a5c2f3fd66b2bee942287cf65536c",
+                        "installed_by": ["modules"]
+                    },
+                    "cellranger/multi": {
+                        "branch": "master",
+                        "git_sha": "90dad5491658049282ceb287a3d7732c1ce39837",
+                        "installed_by": ["modules"]
+                    },
+                    "cellrangerarc/count": {
+                        "branch": "master",
+                        "git_sha": "18e53e27cfeca5dbbfbeee675c05438dec68245f",
+                        "installed_by": ["modules"]
+                    },
+                    "cellrangerarc/mkgtf": {
+                        "branch": "master",
+                        "git_sha": "575e1bc54b083fb15e7dd8b5fcc40bea60e8ce83",
+                        "installed_by": ["modules"]
+                    },
+                    "cellrangerarc/mkref": {
+                        "branch": "master",
+                        "git_sha": "3549a361ce3401b6afd238a266389d78392a53f6",
+                        "installed_by": ["modules"]
+                    },
+                    "fastqc": {
+                        "branch": "master",
+                        "git_sha": "46eca555142d6e597729fcb682adcc791796f514",
+                        "installed_by": ["modules"]
+                    },
+                    "gffread": {
+                        "branch": "master",
+                        "git_sha": "b1b959609bda44341120aed1766329909f54b8d0",
+                        "installed_by": ["modules"]
+                    },
+                    "gunzip": {
+                        "branch": "master",
+                        "git_sha": "4e5f4687318f24ba944a13609d3ea6ebd890737d",
+                        "installed_by": ["modules"]
+                    },
+                    "kallistobustools/count": {
+                        "branch": "master",
+                        "git_sha": "53c2b466994f07def210b7f4cc866bb5a8a2cb92",
+                        "installed_by": ["modules"]
+                    },
+                    "kallistobustools/ref": {
+                        "branch": "master",
+                        "git_sha": "de8215983defba48cd81961d620a9e844f11c7e7",
+                        "installed_by": ["modules"]
+                    },
+                    "multiqc": {
+                        "branch": "master",
+                        "git_sha": "b80f5fd12ff7c43938f424dd76392a2704fa2396",
+                        "installed_by": ["modules"]
+                    },
+                    "star/genomegenerate": {
+                        "branch": "master",
+                        "git_sha": "46eca555142d6e597729fcb682adcc791796f514",
+                        "installed_by": ["modules"]
+                    },
+                    "universc": {
+                        "branch": "master",
+                        "git_sha": "3f5420aa22e00bd030a2556dfdffc9e164ec0ec5",
+                        "installed_by": ["modules"]
+                    },
+                    "unzip": {
+                        "branch": "master",
+                        "git_sha": "b0c3ff2485534c09d9debbf20125d9c6b72ce118",
+                        "installed_by": ["modules"]
+                    }
+                }
+            },
+            "subworkflows": {
+                "nf-core": {
+                    "utils_nextflow_pipeline": {
+                        "branch": "master",
+                        "git_sha": "5caf7640a9ef1d18d765d55339be751bb0969dfa",
+                        "installed_by": ["subworkflows"]
+                    },
+                    "utils_nfcore_pipeline": {
+                        "branch": "master",
+                        "git_sha": "92de218a329bfc9a9033116eb5f65fd270e72ba3",
+                        "installed_by": ["subworkflows"]
+                    },
+                    "utils_nfvalidation_plugin": {
+                        "branch": "master",
+                        "git_sha": "5caf7640a9ef1d18d765d55339be751bb0969dfa",
+                        "installed_by": ["subworkflows"]
+                    }
+                }
+            }
+        }
+    }
+}

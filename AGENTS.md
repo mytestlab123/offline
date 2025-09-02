@@ -1,7 +1,18 @@
-KISS Agent Guide
+Agent Guide
+
+Project Name: "Nextflow Offline"
 
 Purpose
 - Keep runs fast and reproducible for nf-core pipelines in AWS.
+
+Task Management
+- Always check ai directory for tasks.md, progress.md (TODO) and current.md
+- tasks.md: Tasks description for current PR. This is Maanged by Developer i.e. Amit
+- All following files must update and managed by Codex AI Agent
+- progress.md: Progress list/ Updated TODO for current PR 
+- current.md: Current Task from progress.md, it is always one Task
+- issues.md: All history of issues/ PR/ tasks for future reference
+- PRD.md: Project Requirement Document (Used for Long Term)
 
 Defaults
 - Docker only; Nexus Proxy serves quay.io.

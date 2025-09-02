@@ -109,7 +109,11 @@ mkdir -p conf
 set +e
 rm -f justfile && ln -sv "${CALL_DIR}/justfile" justfile 2>/dev/null || true
 rm -f ENV && ln -sv "${CALL_DIR}/ENV" ENV 2>/dev/null || true
-rm -f conf/test.config && ln -sv "${CALL_DIR}/test.config" conf/test.config 2>/dev/null || true
+
+# Do not modify conf/test.config during setup. It remains upstream and is the
+# source of truth for data mirroring. Use `just finalize_config` after data prep
+# to back up, promote to root, and link back.
+echo "[i] Leaving conf/test.config unchanged (finalize later if needed)."
 
 # Fallback to common/pipeline/justfile if caller lacks justfile
 if [[ ! -e justfile && -f "${SCRIPT_DIR}/justfile" ]]; then
