@@ -1,7 +1,0 @@
-name: strelka_germline
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - bioconda::strelka=2.9.10
