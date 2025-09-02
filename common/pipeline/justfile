@@ -74,48 +74,4 @@ offline:
 clean:
     nextflow clean -f; rm -rf /tmp/nxf-work/ .nextflow null
 
-# Plugins (Dev/Prod)
-plugins_install:
-    @set -euo pipefail; \
-    test -f plugins.list || { echo "ERROR: missing plugins.list"; exit 1; }; \
-    NXF_HOME_DIR="${NXF_HOME:-$HOME/.nextflow}"; \
-    PLUGINS_CSV="$(tr -d '\r' < plugins.list | tr '\n' ',' | sed 's/,$//')"; \
-    test -n "$PLUGINS_CSV" || { echo "ERROR: empty plugins.list"; exit 1; }; \
-    echo "[i] Installing: $PLUGINS_CSV"; \
-    nextflow plugin install "$PLUGINS_CSV"; \
-    if [ -n "${PLUGINS_S3:-}" ]; then echo "[i] Syncing to: $PLUGINS_S3"; aws s3 sync "$NXF_HOME_DIR/plugins/" "$PLUGINS_S3"; fi
-
-plugins_sync:
-    @set -euo pipefail; \
-    : "${PLUGINS_S3:?set PLUGINS_S3 in ENV or shell}"; \
-    NXF_HOME_DIR="${NXF_HOME:-$HOME/.nextflow}"; \
-    mkdir -p "$NXF_HOME_DIR/plugins"; \
-    echo "[i] Syncing from: $PLUGINS_S3"; \
-    aws s3 sync "$PLUGINS_S3" "$NXF_HOME_DIR/plugins"
-
-# Quay helpers (Dev)
-verify_quay:
-    @set -euo pipefail; \
-    if [ -x ./quay_check.sh ]; then ./quay_check.sh; exit $?; fi; \
-    ALLOW='^(quay\.io/|nexus-docker-quay\.)'; \
-    imgs="$(rg -n "container\\s*=\\s*['\"]([^'\"]+)['\"]" conf modules . 2>/dev/null | awk -F= '{print $2}' | sed -E "s/[\"' ,]//g" | sed '/^$/d')"; \
-    echo "$imgs" | grep -Ev "$ALLOW" || true; \
-    bad="$(echo "$imgs" | grep -Ev "$ALLOW" | wc -l | tr -d ' ')"; \
-    if [ "$bad" -gt 0 ]; then echo "[x] Non-quay containers detected"; exit 1; else echo "[✔] All containers appear quay-only"; fi
-
-suggest_revision:
-    @set -euo pipefail; \
-    : "${PIPELINE:?set PIPELINE in ENV}"; \
-    : "${REVISIONS:?provide REVISIONS env (e.g., \"3.18.0 3.17.0\")}"; \
-    tmpd="$(mktemp -d)"; ok=""; \
-    for rev in $REVISIONS; do \
-      echo "[i] Checking ${PIPELINE}@${rev}"; \
-      dl="$tmpd/pipe"; rm -rf "$dl"; \
-      if ! nf-core pipelines download "$PIPELINE" --revision "$rev" --container-system none --compress none --outdir "$dl" --force >/dev/null 2>&1; then echo "  - download failed"; continue; fi; \
-      staged="$(find "$dl" -maxdepth 2 -type d -name '*_*' | head -n1)"; \
-      if [ -z "$staged" ]; then echo "  - stage missing"; continue; fi; \
-      imgs2="$(cd "$staged" && rg -n "container\\s*=\\s*['\"]([^'\"]+)['\"]" conf modules . 2>/dev/null | awk -F= '{print $2}' | sed -E "s/[\"' ,]//g" | sed '/^$/d')"; \
-      if echo "$imgs2" | grep -Ev "^(quay\\.io/|nexus-docker-quay\\.)" >/dev/null 2>&1; then echo "  ✖ not quay-only"; else echo "  ✔ quay-only"; ok="$ok $rev"; fi; \
-    done; \
-    rm -rf "$tmpd"; \
-    if [ -n "$ok" ]; then echo "[i] Suggested quay-only revisions:$ok"; else echo "[x] No quay-only revisions found"; exit 1; fi
+## (Plugins and Quay helper recipes removed by request; use simple shell commands instead.)
