@@ -1,3 +1,0 @@
-patient,sample,lane,fastq_1,fastq_2
-test,test,test_L1,s3://lifebit-user-data-nextflow/offline/sarek/data/reads/test_1.fastq.gz,s3://lifebit-user-data-nextflow/offline/sarek/data/reads/test_2.fastq.gz
-
