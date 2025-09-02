@@ -54,6 +54,9 @@ Notes
 - Use `--follow-symlinks` in S3 sync to avoid stale symlink stubs.
 - For offline hosts, ensure Nexus Proxy access to quay is working (pre‑validated).
 
+More
+- See GETTING_STARTED.md for step‑by‑step demos (demo + rnaseq).
+
 Future Work (agreed)
 - Nextflow pinning per environment: set `NXF_VER` in your `~/.env` (not in pipeline ENV).
   - Dev: `export NXF_VER=24.04.4`
