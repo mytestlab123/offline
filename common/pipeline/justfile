@@ -36,8 +36,15 @@ data_refs:
     bash ../../common/data/mirror_param_url.sh --param-name gtf   --conf ./conf/test.config --pipeline "$PIPELINE"
 
 # Convenience: run both input+refs mirroring
-data:
+mirror:
     just data_input data_refs
+
+# Mirror an arbitrary single URL param to S3 (e.g., contrasts)
+data_param PARAM:
+    @set -euo pipefail; \
+    : "${PIPELINE:?set PIPELINE in ENV}"; \
+    : "${S3_ROOT:?set S3_ROOT in ENV or shell}"; \
+    bash ../../common/data/mirror_param_url.sh --param-name "{{PARAM}}" --conf ./conf/test.config --pipeline "$PIPELINE"
 
 # Verify config has S3 URIs for key params
 verify_offline:
@@ -46,19 +53,19 @@ verify_offline:
 
 # Convenience: run mirroring then show data
 prep:
-    just data check_data
+    just mirror check_data
 
 # Online run (uses quay registry override)
 test:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE $ARG
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') --outdir /tmp/out-$PIPELINE -w /tmp/work-$PIPELINE $ARG
 
 # Online stub run
 stub:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -stub-run $ARG
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') --outdir /tmp/out-$PIPELINE -w /tmp/work-$PIPELINE -stub-run $ARG
 
 # Online preview
 preview:
-    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') -w /tmp/work-$PIPELINE -preview $ARG
+    nextflow run . -profile test -resume -c <(echo 'docker { registry = "quay.io" }') --outdir /tmp/out-$PIPELINE -w /tmp/work-$PIPELINE -preview $ARG
 
 # Upload code/config to S3 (excludes work/)
 up:
@@ -77,15 +84,15 @@ down:
 
 # Offline full run
 run:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE $ARG
+    nextflow run . -profile test -offline -resume --outdir /tmp/out-$PIPELINE -w ${HOME}/work-$PIPELINE $ARG
 
 # Offline stub run
 stub2:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -stub-run $ARG
+    nextflow run . -profile test -offline -resume --outdir /tmp/out-$PIPELINE -w ${HOME}/work-$PIPELINE -stub-run $ARG
 
 # Offline preview
 preview2:
-    nextflow run . -profile test -offline -resume -w ${HOME}/work-$PIPELINE -preview $ARG
+    nextflow run . -profile test -offline -resume --outdir /tmp/out-$PIPELINE -w ${HOME}/work-$PIPELINE -preview $ARG
 
 # chmod +x -c /home/ssm-user/offline/rnaseq/rnaseq/bin/*
 execpermission:
@@ -134,19 +141,19 @@ finalize_config:
     ROOT_DIR="$PWD/.."; \
     TEST_STAGE="$STAGE_DIR/conf/test.config"; \
     [[ -f "$TEST_STAGE" ]] || { echo "ERROR: $TEST_STAGE not a regular file (already linked or missing)"; exit 2; }; \
-    TS="$$(date +%Y%m%d%H%M%S)"; \
-    BK="/tmp/$${PIPELINE:-pipeline}-conf.test.config.$$TS"; \
-    echo "[i] Backup: $$TEST_STAGE -> $$BK"; \
-    cp -a "$$TEST_STAGE" "$$BK"; \
+    TS="$(date +%Y%m%d%H%M%S)"; \
+    BK="/tmp/${PIPELINE:-pipeline}-conf.test.config.$TS"; \
+    echo "[i] Backup: $TEST_STAGE -> $BK"; \
+    cp -a "$TEST_STAGE" "$BK"; \
     echo "[i] Remove stage conf/test.config"; \
-    rm -f "$$TEST_STAGE"; \
-    DEST_ROOT="$$ROOT_DIR/test.config"; \
-    if [ -e "$$DEST_ROOT" ]; then \
+    rm -f "$TEST_STAGE"; \
+    DEST_ROOT="$ROOT_DIR/test.config"; \
+    if [ -e "$DEST_ROOT" ]; then \
       echo "[i] Root test.config exists; backing up"; \
-      cp -a "$$DEST_ROOT" "$$DEST_ROOT.bak-$$TS"; \
+      cp -a "$DEST_ROOT" "$DEST_ROOT.bak-$TS"; \
     fi; \
-    echo "[i] Promote to root: $$BK -> $$DEST_ROOT"; \
-    cp -a "$$BK" "$$DEST_ROOT"; \
-    echo "[i] Link back: conf/test.config -> $$DEST_ROOT"; \
-    ln -sv "$$DEST_ROOT" "$$TEST_STAGE"; \
+    echo "[i] Promote to root: $BK -> $DEST_ROOT"; \
+    cp -a "$BK" "$DEST_ROOT"; \
+    echo "[i] Link back: conf/test.config -> $DEST_ROOT"; \
+    ln -sv "$DEST_ROOT" "$TEST_STAGE"; \
     echo "[✔] Finalized: conf/test.config now links to root test.config"
