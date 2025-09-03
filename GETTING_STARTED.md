@@ -12,17 +12,15 @@ Example 1: demo (basic)
    - cd demo; source ~/.env; source ENV
    - ./setup.sh -f; cd demo
 3) Verify test config (upstream)
-   - just verify_config   # should report a regular file before finalize
+   - rg -n "params\.(input|contrasts|fasta|gtf)" conf/test.config
 4) Check data
    - just check_data
 5) Run (online)
    - just preview  or  just stub  or  just test
 6) Run (offline)
    - just down; just run
-8) Verify environment
-   - just verify_env; just verify_config
 7) Verify environment
-   - just verify_env; just verify_config
+   - just verify_env
 
 Example 2: rnaseq (complex)
 1) Pick quay-only revision (manual, one-time)
@@ -31,10 +29,10 @@ Example 2: rnaseq (complex)
    - cd rnaseq; source ~/.env; source ENV
    - ./setup.sh -f; cd rnaseq
 3) Verify test config includes S3 inputs (upstream file)
-   - rg -n "params\.input|fasta|gtf" conf/test.config
-   - just verify_config
-4) Mirror small test data (optional refresh)
+   - rg -n "params\.(input|fasta|gtf)" conf/test.config
+4) Mirror small test data (verified)
    - bash ../../common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config
+   - or: `just mirror` then `just check_data` and `just verify_offline`
 5) Check data
    - just check_data
 6) Run (online)
@@ -42,7 +40,7 @@ Example 2: rnaseq (complex)
 7) Run (offline)
    - just down; just run
 7) Verify environment
-- just verify_env; just verify_config
+- just verify_env
 
 Example 3: scrnaseq (scRNA-seq)
 1) Pick quay-only revision (manual, one-time)
@@ -51,29 +49,23 @@ Example 3: scrnaseq (scRNA-seq)
    - cd scrnaseq; source ~/.env; source ENV
    - ./setup.sh -f; cd scrnaseq
 3) Verify test config includes S3 inputs + refs (upstream file)
-   - rg -n "params\.input|fasta|gtf|aligner|protocol" conf/test.config
-   - just verify_config
-4) Mirror small test data (explicit, one-time per change)
+   - rg -n "params\.(input|fasta|gtf|aligner|protocol)" conf/test.config
+4) Mirror small test data (explicit; verified)
    - just data_input      # samplesheet -> offline/inputs3.csv + S3 upload
    - just data_refs       # fasta + gtf -> S3 upload
-   - just check_data      # or use `just mirror` to run both mirroring steps
-   - Optional: just verify_offline  # ensure S3 URIs present (after you update conf/test.config)
-5) Update conf/test.config to point to S3 URIs (input/fasta/gtf) and set offline toggles
-6) Finalize test.config (after data is 100% ready)
-   - just finalize_config
-   - just verify_config   # should report a symlink post-finalize
+   - just mirror          # runs both mirroring steps and uploads contrasts
+   - Optional: just verify_offline  # ensure S3 URIs present
+5) Edit conf/test.config directly to point to S3 URIs (input/contrasts/fasta/gtf) and set offline toggles
 7) Run (online)
    - just preview  or  just stub  or  just test
 8) Run (offline)
    - just down; just run
 9) Verify environment
-   - just verify_env; just verify_config
+   - just verify_env
 
  Notes
  - Always: source ~/.env; source ENV before running `just` or `setup.sh`.
  - S3 sync uses --follow-symlinks and excludes .nextflow/*.
  - ARG disables remote config lookups for faster offline runs.
  - Data prep: keep it explicit. Do not run mirroring on every `just online`.
- - test.config flow: setup never modifies `<pipeline>/<pipeline>/conf/test.config` (upstream stays intact for mirroring).
-   - After data prep and manual S3 URI updates, run `just finalize_config` to promote conf/test.config to `<pipeline>/test.config` and link back.
-   - Verify with `just verify_config` (regular file before finalize, symlink after).
+ - test.config flow: setup never modifies `<pipeline>/<pipeline>/conf/test.config`; it also writes a one-time backup at `conf/original.test.config`. Edit `conf/test.config` directly.

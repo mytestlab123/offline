@@ -20,12 +20,12 @@ Key Ideas
 Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
-- `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
+- `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and prepare local inputs.
 - `<pipeline>/` (demo, rnaseq, scrnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
 
 Per‑Pipeline Quick Start
 1) cd `<pipeline>`; `source ~/.env; source ENV`
-2) `./setup.sh -f` (stages nf-core sources and links ENV/justfile/test.config)
+2) `./setup.sh -f` (stages nf-core sources and links ENV/justfile; does not modify conf/test.config; creates conf/original.test.config once)
 3) cd `<pipeline>` (staged folder)
 4) Common recipes (via `just`):
    - `test` / `preview` (online; quay override)
@@ -51,9 +51,15 @@ Choosing a Quay‑only Revision (manual, one‑time)
 - Review `/tmp/out/sarek/<tag>/container.conf` and `/tmp/out/sarek/selected_tag.txt`.
 - Repeat for `rnaseq`, `scrnaseq` as needed.
 
-Test‑Data Mirroring (implemented)
-- `bash common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config`
-- Writes `offline/inputs3.csv` and `offline/offline_test.conf`; uploads assets to `s3://$S3_ROOT/$PIPELINE/data/`.
+ Test‑Data Mirroring (status)
+ - Verified working on 2025‑09‑03 for rnasplice, rnaseq, scrnaseq.
+ - Primary command:
+   - `bash common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config`
+ - Convenience via just:
+   - `just mirror`    # inputs3.csv + refs (fasta/gtf) + contrasts to S3
+   - `just check_data`  # lists S3 objects and prints offline/inputs3.csv
+   - `just verify_offline`  # asserts params point to s3:// (direct or via base path)
+ - Effect: writes `offline/inputs3.csv`; uploads assets under `s3://$S3_ROOT/$PIPELINE/data/`.
 
 Notes
 - ARG is passed to all runs to avoid remote config fetches:
