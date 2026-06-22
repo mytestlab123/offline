@@ -6,6 +6,9 @@ env:
 test:
     tests/smoke.sh
 
+container-inventory-test:
+    tests/container_inventory.sh
+
 scrna-preview:
     cd scrnaseq/scrnaseq && just preview
 
@@ -14,4 +17,3 @@ scrna-test:
 
 scrna-run-offline:
     cd scrnaseq/scrnaseq && just run
-
