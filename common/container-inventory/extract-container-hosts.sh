@@ -97,6 +97,11 @@ if [[ -z "$source_dir" ]]; then
   fi
 fi
 
+if [[ -n "$source_dir" && -L "${source_dir}/conf/test.config" && ! -e "${source_dir}/conf/test.config" ]]; then
+  echo "[w] ignoring local source with broken conf/test.config symlink: ${source_dir}" >&2
+  source_dir=""
+fi
+
 containers_tmp="${raw_dir}/containers.raw"
 : > "$containers_tmp"
 
@@ -124,15 +129,17 @@ run_nextflow_inspect() {
   need nextflow
   need jq
   local json="${raw_dir}/inspect.json"
+  local inspect_out="${raw_dir}/inspect-out"
+  mkdir -p "$inspect_out"
 
   if [[ -n "$source_dir" && -f "${source_dir}/main.nf" ]]; then
     (
       cd "$source_dir"
-      nextflow inspect . -profile "$profile" -concretize true -format json > "$json"
+      nextflow inspect . -profile "$profile" --outdir "$inspect_out" -concretize true -format json > "$json"
     )
   else
     [[ -n "$revision" ]] || die "revision required when inspecting nf-core/${pipeline}"
-    nextflow inspect "nf-core/${pipeline}" -r "$revision" -profile "$profile" -concretize true -format json > "$json"
+    nextflow inspect "nf-core/${pipeline}" -r "$revision" -profile "$profile" --outdir "$inspect_out" -concretize true -format json > "$json"
   fi
 
   extract_from_json "$json"
