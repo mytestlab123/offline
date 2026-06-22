@@ -20,8 +20,10 @@ Options:
 
 Outputs:
   all.txt
+  containers.tsv
   summary.tsv
   hosts/<host>.txt
+  hosts/dynamic.txt
   hosts/implicit.txt
   hosts/unknown.txt
 EOF
@@ -80,11 +82,16 @@ fi
 
 revision="${revision:-${REVISION:-}}"
 pipeline="${pipeline:-${PIPELINE:-}}"
+[[ -n "$out_root" ]] || die "--out-root cannot be empty"
 out_dir="${repo_root}/${out_root}/${pipeline}"
 host_dir="${out_dir}/hosts"
 raw_dir="${out_dir}/raw"
 
 if [[ "$force" == "1" ]]; then
+  case "$out_dir" in
+    "${repo_root}/out/"*|"/tmp/"*|"/mnt/"*|"${HOME}/.AGENTS-temp/"*) ;;
+    *) die "refusing --force delete outside generated output area: $out_dir" ;;
+  esac
   rm -rf "$out_dir"
 fi
 mkdir -p "$host_dir" "$raw_dir"
@@ -171,6 +178,8 @@ normalize_container < "$containers_tmp" | sort -u > "${out_dir}/all.txt"
 
 : > "${out_dir}/summary.tsv"
 printf 'host\tcount\tfile\n' > "${out_dir}/summary.tsv"
+: > "${out_dir}/containers.tsv"
+printf 'host\tcontainer\n' > "${out_dir}/containers.tsv"
 
 safe_host_file() {
   local host="$1"
@@ -180,7 +189,9 @@ safe_host_file() {
 host_for_container() {
   local image="$1"
   local first="${image%%/*}"
-  if [[ "$image" != */* ]]; then
+  if [[ "$image" == *'$'* || "$image" == *'{'* || "$image" == *'}'* ]]; then
+    echo "dynamic"
+  elif [[ "$image" != */* ]]; then
     echo "unknown"
   elif [[ "$first" == *.* || "$first" == *:* || "$first" == "localhost" ]]; then
     echo "$first"
@@ -194,9 +205,10 @@ while IFS= read -r image; do
   host="$(host_for_container "$image")"
   file="${host_dir}/$(safe_host_file "$host").txt"
   printf '%s\n' "$image" >> "$file"
+  printf '%s\t%s\n' "$host" "$image" >> "${out_dir}/containers.tsv"
 done < "${out_dir}/all.txt"
 
-for expected in quay.io community.wave.seqera.io docker.io ghcr.io implicit unknown; do
+for expected in quay.io community.wave.seqera.io docker.io ghcr.io dynamic implicit unknown; do
   touch "${host_dir}/$(safe_host_file "$expected").txt"
 done
 
