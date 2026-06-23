@@ -9,6 +9,9 @@ test:
 container-inventory-test:
     tests/container_inventory.sh
 
+container-inventory-verify-test:
+    tests/container_inventory_verify.sh
+
 scrna-preview:
     cd scrnaseq/scrnaseq && just preview
 
