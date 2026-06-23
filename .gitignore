@@ -12,3 +12,6 @@ sarek/data
 scrnaseq/data
 out/
 null/
+.env
+.env.*
+!.env.example
