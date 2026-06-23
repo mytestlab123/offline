@@ -6,22 +6,25 @@ Purpose
   - Prod (offline): code/data from S3; containers via Nexus Proxy; Docker engine.
 
 For AI Agent and Task Management
-- Always use "AGENTS.md"
-- For any task/PR/progress, read all files from "ai" folder
-- Amit/ Dev will add tasks in "@ai/tasks.md"
-- AI Agent/ Codex will update all other files in "@ai"
+- Always use `AGENTS.md`.
+- The old `ai/` folder is archived under `archive/ai-20260623/`.
+- Do not use archived `ai/` files as active task instructions.
 
 Key Ideas
 - Single ENV per pipeline (no global auto-load). Source manually: `source ~/.env; source ENV`.
 - Shared logic via symlinks to `common/pipeline/` (`setup.sh`, `justfile`).
 - S3 sync uses `--follow-symlinks` so linked files upload as content.
 - No security hardening, no container mirroring; choose quay‑only revisions.
+- First prove offline bundle tooling with `common/offline-smoke/nf-core-download-smoke.sh`.
+- Keep Docker and containerd data on a large volume before large pipeline downloads.
 
 Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
 - `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
 - `<pipeline>/` (demo, rnaseq, scrnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
+- `archive/offline-pipeline-references/` – note explaining why the five
+  customized pipeline directories are preserved as offline references.
 
 Per‑Pipeline Quick Start
 1) cd `<pipeline>`; `source ~/.env; source ENV`
@@ -54,6 +57,13 @@ Choosing a Quay‑only Revision (manual, one‑time)
 Test‑Data Mirroring (implemented)
 - `bash common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config`
 - Writes `offline/inputs3.csv` and `offline/offline_test.conf`; uploads assets to `s3://$S3_ROOT/$PIPELINE/data/`.
+
+nf-core Offline Smoke
+- Small proof target: `nf-core/testpipeline@3.2.1`.
+- Run: `just nfcore-download-smoke`
+- Output: `/mnt/data5/nfcore-offline-smoke/results/RESULT.md`
+- Use this before attempting larger pipelines like `rnaseq`, `sarek`, or `scrnaseq`.
+- This proves local download, Docker TAR loading, and `nextflow -offline`; GCC/Nexus still needs `common/container-inventory/verify-nexus-container-access.sh`.
 
 Notes
 - ARG is passed to all runs to avoid remote config fetches:
