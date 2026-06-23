@@ -109,6 +109,19 @@ pushes the image, grants the EC2 role pull access through a temporary repository
 policy, runs a tiny Nextflow Docker process on the EC2 host, and deletes the
 temporary ECR repo after proof.
 
+Run `nf-core/testpipeline` through temporary DEV ECR image mirrors:
+
+```bash
+common/aws-validation/run-dev-ecr-testpipeline-e2e-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --bundle-s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/
+```
+
+This creates temporary ECR repos for the testpipeline FastQC, MultiQC, and
+FASTA validator images, pushes them from approved S3 Docker TARs, grants the
+EC2 role pull access, runs the local S3-bundle workflow with ECR container
+overrides and small resource caps, then deletes the temporary ECR repos.
+
 Explicit full-smoke (separate command):
 
 ```bash
