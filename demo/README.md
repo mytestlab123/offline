@@ -5,7 +5,7 @@
 - just verify_config   # upstream regular file before finalize
 - Data prep (optional):
   - just data_input     # samplesheet -> offline/inputs3.csv + S3
-  - just check_data
+  - just check_data     # or: just mirror
 - If you update conf/test.config to S3 URIs: just finalize_config
 - Online:  just preview  (or: just stub / just test)
 - Offline: just down; just run
