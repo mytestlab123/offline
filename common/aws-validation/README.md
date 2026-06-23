@@ -197,6 +197,19 @@ common/aws-validation/stage-offline-bundle-to-s3.sh \
   --s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/
 ```
 
+Validate a bundle locally without AWS/S3 access:
+
+```bash
+common/aws-validation/stage-offline-bundle-to-s3.sh \
+  --bundle-dir /path/to/downloads/testpipeline \
+  --validate-only
+```
+
+The staging script validates Docker TAR integrity before upload. It writes
+`.bundle-validation/docker-image-sizes.tsv` and
+`.bundle-validation/docker-image-sha256sum.txt` into the bundle. If a TAR has a
+missing manifest, config, or layer blob, staging stops before S3 upload.
+
 The bundle staging script does not delete destination objects by default. Use
 `--delete` only when that destructive sync is explicitly approved.
 

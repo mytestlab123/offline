@@ -11,7 +11,7 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Create a private validation EC2 | `create-dev-validation-ec2.sh` | covered | Enforces private host basics and SSM-first access. |
 | Sync this repo to private artifact storage | `sync-repo-to-s3.sh` | covered | Lets private hosts fetch code without Git access. |
 | Stage Nextflow/nf-core tool bundle | `stage-nextflow-tools-to-s3.sh` | covered | Supports private hosts without public package installs during validation. |
-| Stage a downloaded pipeline bundle | `stage-offline-bundle-to-s3.sh` | covered | Uses non-destructive sync by default. |
+| Stage a downloaded pipeline bundle | `stage-offline-bundle-to-s3.sh` | covered | Uses non-destructive sync by default and validates Docker TAR integrity before upload. |
 | Run host, S3, Nexus, Docker, and inspect probes through SSM | `run-dev-ec2-smoke-via-ssm.sh` | covered | Probe-first workflow before full runs. |
 | Extract container inventory by host | `../container-inventory/extract-container-hosts.sh` | covered | Supports live inspect, inspect JSON, image list, and static fallback. |
 | Verify Nexus container access from a private EC2 | `../container-inventory/verify-nexus-container-access.sh` | covered | Pulls through Nexus and checks public registry access is blocked. |
@@ -38,6 +38,9 @@ A pipeline is considered fully covered only when all of these are true:
    registry access.
 7. The result packet records command, evidence path, changed resources, retained
    resources, cleanup state, and the next safe action.
+
+For S3 Docker TAR preload, the bundle must pass
+`stage-offline-bundle-to-s3.sh --validate-only` before upload or EC2 execution.
 
 ## Current Known Blocker
 
