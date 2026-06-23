@@ -6,10 +6,9 @@ Purpose
   - Prod (offline): code/data from S3; containers via Nexus Proxy; Docker engine.
 
 For AI Agent and Task Management
-- Always use "AGENTS.md"
-- For any task/PR/progress, read all files from "ai" folder
-- Amit/ Dev will add tasks in "@ai/tasks.md"
-- AI Agent/ Codex will update all other files in "@ai"
+- Always use `AGENTS.md`.
+- The old `ai/` folder is archived under `archive/ai-20260623/`.
+- Do not use archived `ai/` files as active task instructions.
 
 Key Ideas
 - Single ENV per pipeline (no global auto-load). Source manually: `source ~/.env; source ENV`.
@@ -24,6 +23,8 @@ Repo Layout
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
 - `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
 - `<pipeline>/` (demo, rnaseq, scrnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
+- `archive/offline-pipeline-references/` – note explaining why the five
+  customized pipeline directories are preserved as offline references.
 
 Per‑Pipeline Quick Start
 1) cd `<pipeline>`; `source ~/.env; source ENV`
