@@ -93,6 +93,22 @@ common/aws-validation/run-ec2-s3-bundle-e2e-via-ssm.sh \
   --max-memory "2 GB"
 ```
 
+Run a DEV ECR image-path E2E on an EC2 host:
+
+```bash
+common/aws-validation/run-dev-ecr-nextflow-e2e-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --source-tar-s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/docker-images/biocontainers-fastqc-0.12.1--hdfd78af_0.tar \
+  --loaded-image quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0 \
+  --push-mode local
+```
+
+Use `--push-mode local` when the EC2 instance profile can pull from ECR but
+cannot push image layers. The controller role creates a temporary ECR repo,
+pushes the image, grants the EC2 role pull access through a temporary repository
+policy, runs a tiny Nextflow Docker process on the EC2 host, and deletes the
+temporary ECR repo after proof.
+
 Explicit full-smoke (separate command):
 
 ```bash
@@ -171,6 +187,8 @@ For private or no-Internet environments, use one of these image supply paths:
 2. ECR mirror
    - best AWS-native runtime registry path when ECR endpoints are available
    - requires an image import or mirror step
+   - a practical low-permission pattern is controller/CI push to ECR and EC2
+     pull from ECR
 3. Nexus Docker proxy
    - only valid after testing Docker CLI pull from inside the target VPC
    - a Nexus browser/API URL can work while Docker pull routing still fails
