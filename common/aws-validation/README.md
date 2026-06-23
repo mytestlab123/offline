@@ -2,6 +2,9 @@
 
 Repo-owned scripts for deterministic AWS validation work.
 
+For the current end-to-end coverage matrix, see
+`common/aws-validation/E2E_COVERAGE.md`.
+
 ## Private Values
 
 This is a public repo. Keep private account IDs, subnet IDs, security-group IDs,
