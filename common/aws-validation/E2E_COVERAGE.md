@@ -22,7 +22,7 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Run `bamtofastq` through DEV ECR | `run-dev-ecr-bamtofastq-e2e-via-ssm.sh` | covered | Pipeline-specific ECR validation path. |
 | Run `scrnaseq` through DEV ECR | none yet | blocked | Needs accessible offline input data before a real E2E runner is useful. |
 | Run larger pipelines such as `rnaseq` or `sarek` through DEV ECR | none yet | planned | Add only after input data, image inventory, disk sizing, and resource caps are known. |
-| Retained ECR repo lifecycle review | none yet | gap | Needed if validation repos are kept for reuse instead of deleted after proof. |
+| Retained ECR repo lifecycle review | `ecr-validation-repo-lifecycle.sh` | covered/read-only | Cleanup remains explicit allowlist and approval gated. |
 
 ## Definition Of Done For One Pipeline E2E
 
@@ -48,8 +48,6 @@ available or a realistic synthetic dataset is approved.
 
 ## Next Good Code Additions
 
-- Add a retained ECR repo inventory/cleanup helper that is read-only by default
-  and deletes only with an explicit allowlist.
 - Add a generic pipeline ECR runner after two or three pipeline-specific runners
   have stabilized enough to avoid hiding special cases.
 - Add `scrnaseq`, `rnaseq`, and `sarek` runners only after their offline input

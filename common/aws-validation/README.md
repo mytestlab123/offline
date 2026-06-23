@@ -125,6 +125,40 @@ FASTA validator images, pushes them from approved S3 Docker TARs, grants the
 EC2 role pull access, runs the local S3-bundle workflow with ECR container
 overrides and small resource caps, then deletes the temporary ECR repos.
 
+Inventory retained validation ECR repositories:
+
+```bash
+common/aws-validation/ecr-validation-repo-lifecycle.sh \
+  --profile dev \
+  --region ap-southeast-1 \
+  --repo-prefix nextflow-offline/e2e-
+```
+
+Plan cleanup for exact reviewed repositories without deleting:
+
+```bash
+common/aws-validation/ecr-validation-repo-lifecycle.sh \
+  --profile dev \
+  --region ap-southeast-1 \
+  --repo-name nextflow-offline/e2e-example \
+  --dry-run-delete
+```
+
+Real deletion is intentionally hard-gated. Use it only after the inventory is
+reviewed and the exact repository names are approved:
+
+```bash
+common/aws-validation/ecr-validation-repo-lifecycle.sh \
+  --profile dev \
+  --region ap-southeast-1 \
+  --allowlist-file reviewed-ecr-delete-allowlist.txt \
+  --delete \
+  --confirm-delete-retained-validation-repos
+```
+
+The helper does not support wildcard delete. Default mode is read-only
+inventory.
+
 Explicit full-smoke (separate command):
 
 ```bash
