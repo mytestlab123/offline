@@ -21,6 +21,7 @@ Options:
   --profile-name NAME        Default: docker,test
   --max-cpus N               Optional Nextflow process CPU cap
   --max-memory SIZE          Optional Nextflow process memory cap, for example "2 GB"
+  --param KEY=VALUE          Extra Nextflow parameter; repeatable
   --out-dir DIR              Local evidence dir
   --help
 
@@ -68,6 +69,7 @@ profile_name="docker,test"
 max_cpus=""
 max_memory=""
 out_dir="$HOME/.AGENTS-temp/offline/s3-bundle-e2e-$(date +%Y%m%d-%H%M%S)"
+declare -a nextflow_params=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -82,6 +84,7 @@ while [[ $# -gt 0 ]]; do
     --profile-name) profile_name="${2:?missing --profile-name value}"; shift 2 ;;
     --max-cpus) max_cpus="${2:?missing --max-cpus value}"; shift 2 ;;
     --max-memory) max_memory="${2:?missing --max-memory value}"; shift 2 ;;
+    --param) nextflow_params+=("${2:?missing --param value}"); shift 2 ;;
     --out-dir) out_dir="${2:?missing --out-dir value}"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
     *) echo "ERROR: unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -104,6 +107,19 @@ fi
 
 mkdir -p "$out_dir"
 commands_file="$out_dir/remote-commands.sh"
+params_tsv="$out_dir/nextflow-params.tsv"
+: > "$params_tsv"
+for param in "${nextflow_params[@]}"; do
+  if [[ "$param" != *=* ]]; then
+    echo "ERROR: --param must use KEY=VALUE: $param" >&2
+    exit 2
+  fi
+  printf '%s\t%s\n' "${param%%=*}" "${param#*=}" >> "$params_tsv"
+done
+params_b64=""
+if [[ -s "$params_tsv" ]]; then
+  params_b64="$(base64 -w0 "$params_tsv")"
+fi
 
 cat > "$commands_file" <<'REMOTE'
 #!/usr/bin/env bash
@@ -117,6 +133,7 @@ revision_dir="__REVISION_DIR__"
 profile_name="__PROFILE_NAME__"
 max_cpus="__MAX_CPUS__"
 max_memory="__MAX_MEMORY__"
+nextflow_params_b64="__NEXTFLOW_PARAMS_B64__"
 
 run_id="s3-bundle-e2e-$(date +%Y%m%d-%H%M%S)"
 run_dir="$workspace/results/$run_id"
@@ -147,6 +164,7 @@ Input:
 - profile: $profile_name
 - max_cpus: ${max_cpus:-none}
 - max_memory: ${max_memory:-none}
+- params_tsv: $run_dir/nextflow-params.tsv
 
 Checks:
 - run_status: $run_status
@@ -189,25 +207,53 @@ test -d "$workflow_dir"
 test -f "$docker_dir/docker-load.sh"
 
 echo "== docker load =="
+docker_load_rc=0
 (
   cd "$docker_dir"
   bash docker-load.sh
-)
+) || docker_load_rc=$?
+if [[ "$docker_load_rc" -ne 0 ]]; then
+  status="blocked"
+  run_status="docker_load_failed"
+  blocker="docker-load.sh failed with rc $docker_load_rc; see $docker_dir/podman-load.log and $run_dir/stderr.txt"
+  exit 0
+fi
+if [[ -f "$docker_dir/podman-load.log" ]] && grep -q '^ERROR:' "$docker_dir/podman-load.log"; then
+  status="blocked"
+  run_status="docker_load_failed"
+  blocker="one or more Docker image TAR files failed to load; see $docker_dir/podman-load.log"
+  exit 0
+fi
 docker images > "$run_dir/docker-images-after-load.txt"
 
 echo "== local input =="
-fastq_dir="$workspace/assets/fastq"
-mkdir -p "$fastq_dir"
-for fastq in sample_R1.fastq.gz sample_R2.fastq.gz sample_single.fastq.gz; do
-  if [[ ! -f "$fastq_dir/$fastq" ]]; then
-    printf '@SEQ_ID\nACGT\n+\n!!!!\n' | gzip -c > "$fastq_dir/$fastq"
-  fi
-done
-cat > "$run_dir/input.csv" <<CSV
+params_tsv="$run_dir/nextflow-params.tsv"
+if [[ -n "$nextflow_params_b64" ]]; then
+  printf '%s' "$nextflow_params_b64" | base64 -d > "$params_tsv"
+else
+  : > "$params_tsv"
+fi
+if ! awk -F '\t' '$1 == "input" { found=1 } END { exit(found ? 0 : 1) }' "$params_tsv"; then
+  fastq_dir="$workspace/assets/fastq"
+  mkdir -p "$fastq_dir"
+  for fastq in sample_R1.fastq.gz sample_R2.fastq.gz sample_single.fastq.gz; do
+    if [[ ! -f "$fastq_dir/$fastq" ]]; then
+      printf '@SEQ_ID\nACGT\n+\n!!!!\n' | gzip -c > "$fastq_dir/$fastq"
+    fi
+  done
+  cat > "$run_dir/input.csv" <<CSV
 sample,fastq_1,fastq_2
 SAMPLE_PAIRED_END,$fastq_dir/sample_R1.fastq.gz,$fastq_dir/sample_R2.fastq.gz
 SAMPLE_SINGLE_END,$fastq_dir/sample_single.fastq.gz,
 CSV
+  printf 'input\t%s\n' "$run_dir/input.csv" >> "$params_tsv"
+fi
+
+nextflow_extra_args=()
+while IFS=$'\t' read -r key value; do
+  [[ -n "${key:-}" ]] || continue
+  nextflow_extra_args+=("--$key" "$value")
+done < "$params_tsv"
 
 if [[ -n "$max_cpus" || -n "$max_memory" ]]; then
   write_cap_block() {
@@ -254,8 +300,8 @@ set +e
   -profile "$profile_name" \
   -offline \
   "${config_args[@]}" \
-  --input "$run_dir/input.csv" \
   --outdir "$run_dir/out" \
+  "${nextflow_extra_args[@]}" \
   -w "$run_dir/work"
 run_rc=$?
 set -e
@@ -283,6 +329,7 @@ sed -i \
   -e "s#__PROFILE_NAME__#${profile_name}#g" \
   -e "s#__MAX_CPUS__#${max_cpus}#g" \
   -e "s#__MAX_MEMORY__#${max_memory}#g" \
+  -e "s#__NEXTFLOW_PARAMS_B64__#${params_b64}#g" \
   "$commands_file"
 chmod +x "$commands_file"
 

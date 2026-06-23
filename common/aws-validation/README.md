@@ -96,6 +96,16 @@ common/aws-validation/run-ec2-s3-bundle-e2e-via-ssm.sh \
   --max-memory "2 GB"
 ```
 
+Use repeated `--param KEY=VALUE` arguments for pipeline-specific offline inputs,
+for example `--param input=s3://.../samplesheet.csv` or
+`--param fasta=s3://.../genome.fasta`. The runner writes those parameters into
+the remote result packet and passes them to Nextflow as `--KEY VALUE`.
+
+The S3 bundle runner treats Docker image import as a hard gate. If
+`docker-load.sh` records any `ERROR:` entry, the run stops before Nextflow and
+reports `docker_load_failed`. Regenerate or mirror the broken image bundle
+before rerunning the pipeline.
+
 Run a DEV ECR image-path E2E on an EC2 host:
 
 ```bash
