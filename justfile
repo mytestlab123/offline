@@ -12,6 +12,9 @@ container-inventory-test:
 container-inventory-verify-test:
     tests/container_inventory_verify.sh
 
+nfcore-download-smoke:
+    common/offline-smoke/nf-core-download-smoke.sh
+
 scrna-preview:
     cd scrnaseq/scrnaseq && just preview
 

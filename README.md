@@ -16,6 +16,8 @@ Key Ideas
 - Shared logic via symlinks to `common/pipeline/` (`setup.sh`, `justfile`).
 - S3 sync uses `--follow-symlinks` so linked files upload as content.
 - No security hardening, no container mirroring; choose quay‑only revisions.
+- First prove offline bundle tooling with `common/offline-smoke/nf-core-download-smoke.sh`.
+- Keep Docker and containerd data on a large volume before large pipeline downloads.
 
 Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
@@ -54,6 +56,13 @@ Choosing a Quay‑only Revision (manual, one‑time)
 Test‑Data Mirroring (implemented)
 - `bash common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config`
 - Writes `offline/inputs3.csv` and `offline/offline_test.conf`; uploads assets to `s3://$S3_ROOT/$PIPELINE/data/`.
+
+nf-core Offline Smoke
+- Small proof target: `nf-core/testpipeline@3.2.1`.
+- Run: `just nfcore-download-smoke`
+- Output: `/mnt/data5/nfcore-offline-smoke/results/RESULT.md`
+- Use this before attempting larger pipelines like `rnaseq`, `sarek`, or `scrnaseq`.
+- This proves local download, Docker TAR loading, and `nextflow -offline`; GCC/Nexus still needs `common/container-inventory/verify-nexus-container-access.sh`.
 
 Notes
 - ARG is passed to all runs to avoid remote config fetches:
