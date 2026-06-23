@@ -35,6 +35,14 @@ Default:
 common/offline-smoke/nf-core-download-smoke.sh
 ```
 
+Small EC2 or CI runner with limited memory:
+
+```bash
+common/offline-smoke/nf-core-download-smoke.sh \
+  --max-cpus 1 \
+  --max-memory "2 GB"
+```
+
 With explicit tools and workspace:
 
 ```bash
@@ -60,6 +68,8 @@ Output:
 - `nf-core pipelines download` can create workflow source and Docker TAR files.
 - `docker-load.sh` can load the TAR files into local Docker.
 - `nextflow -offline` can run the local workflow using loaded images.
+- Optional `--max-cpus` and `--max-memory` caps can keep tiny validation runs
+  inside small EC2 host limits.
 
 ## What This Does Not Prove
 

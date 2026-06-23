@@ -15,6 +15,7 @@ Options:
   --bundle-dir DIR     Required. Example: .../downloads/testpipeline
   --s3-uri URI         Required unless NEXTFLOW_OFFLINE_BUNDLE_S3_URI is set
   --dry-run
+  --delete             Remove destination objects not present locally
   --help
 EOF
 }
@@ -44,6 +45,7 @@ region="${AWS_REGION:-ap-southeast-1}"
 bundle_dir=""
 s3_uri="${NEXTFLOW_OFFLINE_BUNDLE_S3_URI:-}"
 dry_run="false"
+delete_extra="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -52,6 +54,7 @@ while [[ $# -gt 0 ]]; do
     --bundle-dir) bundle_dir="${2:?missing --bundle-dir value}"; shift 2 ;;
     --s3-uri) s3_uri="${2:?missing --s3-uri value}"; shift 2 ;;
     --dry-run) dry_run="true"; shift ;;
+    --delete) delete_extra="true"; shift ;;
     --help|-h) usage; exit 0 ;;
     *) echo "ERROR: unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -82,9 +85,12 @@ args=(
   "$bundle_dir/"
   "$s3_uri"
   --region "$region"
-  --delete
   --no-follow-symlinks
 )
+
+if [[ "$delete_extra" == "true" ]]; then
+  args+=(--delete)
+fi
 
 if [[ "$dry_run" == "true" ]]; then
   args+=(--dryrun)

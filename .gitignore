@@ -15,3 +15,6 @@ null/
 .env
 .env.*
 !.env.example
+
+# Private CloudOS CLI local values
+.env.cloudos.local

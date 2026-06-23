@@ -19,6 +19,8 @@ Options:
   --pipeline NAME            nf-core pipeline. Default: nf-core/testpipeline
   --revision REV             Pipeline revision. Default: 3.2.1
   --profile PROFILE          Nextflow profile. Default: docker,test
+  --max-cpus N               Optional process CPU cap for small validation hosts
+  --max-memory SIZE          Optional process memory cap, for example "2 GB"
   --stages STAGE[,STAGE...]  Comma-separated stages. Default: host-probe,nextflow-inspect
   --skip-run                 Alias for: --stages host-probe,nextflow-inspect,download,docker-load
   --run-smoke                Alias for: --stages full-smoke
@@ -45,6 +47,8 @@ pipeline="nf-core/testpipeline"
 revision="3.2.1"
 profile="docker,test"
 stages_csv="host-probe,nextflow-inspect"
+max_cpus=""
+max_memory=""
 
 nextflow_bin="${NEXTFLOW_BIN:-nextflow}"
 nfcore_bin="${NFCORE_BIN:-nf-core}"
@@ -127,6 +131,14 @@ while [[ $# -gt 0 ]]; do
       profile="${2:?missing value for --profile}"
       shift 2
       ;;
+    --max-cpus)
+      max_cpus="${2:?missing value for --max-cpus}"
+      shift 2
+      ;;
+    --max-memory)
+      max_memory="${2:?missing value for --max-memory}"
+      shift 2
+      ;;
     --stages)
       stages_csv="${2:?missing value for --stages}"
       shift 2
@@ -200,6 +212,7 @@ docker_dir="$download_dir/docker-images"
 work_dir="$workspace/work/$safe_name"
 out_dir="$results_dir/${safe_name}-run-out"
 log_dir="$results_dir/logs"
+resource_config="$workspace/assets/resource-caps.config"
 
 mkdir -p "$results_dir" "$log_dir" "$workspace/downloads" "$workspace/work" "$workspace/bin"
 
@@ -243,6 +256,42 @@ EOF
   printf '%s\n' "$inspect_input"
 }
 
+prepare_resource_config() {
+  mkdir -p "$(dirname "$resource_config")"
+  if [[ -z "$max_cpus" && -z "$max_memory" ]]; then
+    rm -f "$resource_config"
+    return 0
+  fi
+
+  write_cap_block() {
+    if [[ -n "$max_cpus" ]]; then
+      echo "  cpus = $max_cpus"
+    fi
+    if [[ -n "$max_memory" ]]; then
+      echo "  memory = '$max_memory'"
+    fi
+  }
+
+  {
+    echo "process {"
+    write_cap_block
+    for selector in \
+      "withLabel: 'process_single'" \
+      "withLabel: 'process_low'" \
+      "withLabel: 'process_medium'" \
+      "withLabel: 'process_high'" \
+      "withName: 'FASTQC'" \
+      "withName: 'FASTAVALIDATOR'" \
+      "withName: 'MULTIQC'" \
+      "withName: 'SEQTK_TRIM'"; do
+      echo "  $selector {"
+      write_cap_block
+      echo "  }"
+    done
+    echo "}"
+  } > "$resource_config"
+}
+
 run_host_probe() {
   require_free_gb / "$min_root_free_gb"
   require_free_gb "$workspace" "$min_workspace_free_gb"
@@ -267,11 +316,17 @@ run_host_probe() {
 
 run_nextflow_inspect() {
   local inspect_input
+  local -a config_args=()
   inspect_input="$(prepare_local_samplesheet)"
+  prepare_resource_config
+  if [[ -f "$resource_config" ]]; then
+    config_args=(-c "$resource_config")
+  fi
 
   "$nextflow_bin" inspect "$pipeline" \
     -r "$revision" \
     -profile "$profile" \
+    "${config_args[@]}" \
     -format json \
     --input "$inspect_input" \
     --outdir "$out_dir" \
@@ -318,13 +373,19 @@ run_docker_load() {
 
 run_offline_run() {
   local run_input
+  local -a config_args=()
   run_input="$(prepare_local_samplesheet)"
+  prepare_resource_config
+  if [[ -f "$resource_config" ]]; then
+    config_args=(-c "$resource_config")
+  fi
   mkdir -p "$out_dir" "$work_dir"
   (
     cd "$workspace"
     "$nextflow_bin" run "$workflow_dir" \
       -profile "$profile" \
       -offline \
+      "${config_args[@]}" \
       --input "$run_input" \
       --outdir "$out_dir" \
       -w "$work_dir"
@@ -366,6 +427,8 @@ df -h / "$workspace" > "$results_dir/disk-final.txt"
   echo "Pipeline: $pipeline"
   echo "Revision: $revision"
   echo "Profile: $profile"
+  echo "Max CPUs: ${max_cpus:-none}"
+  echo "Max memory: ${max_memory:-none}"
   echo "Workspace: $workspace"
   echo "Stages: ${selected_stages[*]}"
   echo
@@ -388,9 +451,12 @@ df -h / "$workspace" > "$results_dir/disk-final.txt"
     "offline-run.status" \
     "offline-run-result.txt" \
     "offline-run-nextflow-log.txt" \
+    "../assets/resource-caps.config" \
     "disk-final.txt"; do
     if [[ -f "$results_dir/$file" ]]; then
       echo "- $results_dir/$file"
+    elif [[ -f "$workspace/assets/resource-caps.config" && "$file" == "../assets/resource-caps.config" ]]; then
+      echo "- $workspace/assets/resource-caps.config"
     fi
   done
   echo

@@ -83,6 +83,16 @@ common/aws-validation/run-dev-ec2-smoke-via-ssm.sh --instance-id i-xxxxxxxxxxxxx
 common/aws-validation/run-dev-ec2-smoke-via-ssm.sh --instance-id i-xxxxxxxxxxxxxxxxx --stages nextflow-inspect
 ```
 
+Run a prebuilt S3 bundle E2E on an EC2 host:
+
+```bash
+common/aws-validation/run-ec2-s3-bundle-e2e-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --bundle-s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/ \
+  --max-cpus 1 \
+  --max-memory "2 GB"
+```
+
 Explicit full-smoke (separate command):
 
 ```bash
@@ -102,6 +112,17 @@ Stage the offline tool bundle to the approved data/artifact path:
 common/aws-validation/stage-nextflow-tools-to-s3.sh \
   --s3-uri s3://example-bucket/nextflow-offline/tools/nextflow-tools.tar.gz
 ```
+
+Stage a proven offline pipeline bundle:
+
+```bash
+common/aws-validation/stage-offline-bundle-to-s3.sh \
+  --bundle-dir /path/to/downloads/testpipeline \
+  --s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/
+```
+
+The bundle staging script does not delete destination objects by default. Use
+`--delete` only when that destructive sync is explicitly approved.
 
 ```bash
 common/aws-validation/run-dev-ec2-smoke-via-ssm.sh \
