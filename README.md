@@ -17,11 +17,14 @@ Key Ideas
 - No security hardening, no container mirroring; choose quay‑only revisions.
 - First prove offline bundle tooling with `common/offline-smoke/nf-core-download-smoke.sh`.
 - Keep Docker and containerd data on a large volume before large pipeline downloads.
+- Final CloudOS Tool releases must use private GitLab tags pinned to exact
+  upstream versions; see `PIPELINE_RELEASE_CONTRACT.md`.
 
 Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
 - `common/quay/select_quay_revision.sh` – pick quay‑only pipeline tag.
 - `common/data/mirror_testdata.sh` – mirror nf-core test inputs to S3 and emit offline config.
+- `common/test-data/` – deterministic helper for selected `nf-core/test-datasets` files.
 - `<pipeline>/` (demo, rnaseq, scrnaseq, sarek, bamtofastq) – ENV, test.config, symlinks.
 - `archive/offline-pipeline-references/` – note explaining why the five
   customized pipeline directories are preserved as offline references.
@@ -57,6 +60,13 @@ Choosing a Quay‑only Revision (manual, one‑time)
 Test‑Data Mirroring (implemented)
 - `bash common/data/mirror_testdata.sh --rows 1 --param-name input --conf ./conf/test.config`
 - Writes `offline/inputs3.csv` and `offline/offline_test.conf`; uploads assets to `s3://$S3_ROOT/$PIPELINE/data/`.
+- Prefer curated upstream data first when possible:
+  `bash common/test-data/mirror-nfcore-test-datasets.sh --branch rnaseq --files rnaseq-files.txt`
+  starts in dry-run mode and can emit an offline base-path config before any upload.
+- Deterministic smoke checks for nf-core/test-datasets targets:
+  `bash common/test-data/run-nfcore-testdata-smoke.sh --pipeline bamtofastq --pipeline testpipeline --download`
+- Code-quality validation for additional curated datasets:
+  `bash common/test-data/run-nfcore-testdata-smoke.sh --pipeline rnaseq --pipeline scrnaseq --download`
 
 nf-core Offline Smoke
 - Small proof target: `nf-core/testpipeline@3.2.1`.
@@ -74,6 +84,8 @@ Notes
 
 More
 - See GETTING_STARTED.md for step‑by‑step demos (demo + rnaseq).
+- See PIPELINE_RELEASE_CONTRACT.md for the GitLab tag, CloudOS Tool, data,
+  container, params, and output contract.
 
 GitLab Repo Creation (optional)
 - Script: `common/gitlab/create_repo.sh`

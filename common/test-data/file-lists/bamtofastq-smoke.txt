@@ -1,0 +1,4 @@
+# Minimal nf-core/test-datasets files for bamtofastq smoke validation.
+samplesheet/test_bam_samplesheet.csv
+test-datasets/data/genomics/homo_sapiens/illumina/bam/test.paired_end.sorted.bam
+test-datasets/data/genomics/homo_sapiens/illumina/bam/test.paired_end.sorted.bam.bai

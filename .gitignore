@@ -18,3 +18,8 @@ null/
 
 # Private CloudOS CLI local values
 .env.cloudos.local
+
+# Local Codex/controller context, not repo source
+CONTEXT.md
+SPEC.md
+summarize.md

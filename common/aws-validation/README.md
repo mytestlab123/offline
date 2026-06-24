@@ -2,6 +2,9 @@
 
 Repo-owned scripts for deterministic AWS validation work.
 
+For the current end-to-end coverage matrix, see
+`common/aws-validation/E2E_COVERAGE.md`.
+
 ## Private Values
 
 This is a public repo. Keep private account IDs, subnet IDs, security-group IDs,
@@ -93,6 +96,183 @@ common/aws-validation/run-ec2-s3-bundle-e2e-via-ssm.sh \
   --max-memory "2 GB"
 ```
 
+Use repeated `--param KEY=VALUE` arguments for pipeline-specific offline inputs,
+for example `--param input=s3://.../samplesheet.csv` or
+`--param fasta=s3://.../genome.fasta`. The runner writes those parameters into
+the remote result packet and passes them to Nextflow as `--KEY VALUE`.
+
+The S3 bundle runner treats Docker image import as a hard gate. If
+`docker-load.sh` records any `ERROR:` entry, the run stops before Nextflow and
+reports `docker_load_failed`. Regenerate or mirror the broken image bundle
+before rerunning the pipeline.
+
+Run a DEV ECR image-path E2E on an EC2 host:
+
+```bash
+common/aws-validation/run-dev-ecr-nextflow-e2e-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --source-tar-s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/docker-images/biocontainers-fastqc-0.12.1--hdfd78af_0.tar \
+  --loaded-image quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0 \
+  --push-mode local
+```
+
+Use `--push-mode local` when the EC2 instance profile can pull from ECR but
+cannot push image layers. The controller role creates a temporary ECR repo,
+pushes the image, grants the EC2 role pull access through a temporary repository
+policy, runs a tiny Nextflow Docker process on the EC2 host, and deletes the
+temporary ECR repo after proof.
+
+Run `nf-core/testpipeline` through temporary DEV ECR image mirrors:
+
+```bash
+common/aws-validation/run-dev-ecr-testpipeline-e2e-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --bundle-s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/
+```
+
+This creates temporary ECR repos for the testpipeline FastQC, MultiQC, and
+FASTA validator images, pushes them from approved S3 Docker TARs, grants the
+EC2 role pull access, runs the local S3-bundle workflow with ECR container
+overrides and small resource caps, then deletes the temporary ECR repos.
+
+Generate a generic ECR image manifest and Nextflow override config from
+`nextflow inspect -format json`:
+
+```bash
+common/aws-validation/generate-ecr-container-overrides.sh \
+  --inspect-json /path/to/pipeline.inspect.json \
+  --account-id 123456789012 \
+  --repo-prefix nextflow-offline/e2e-rnaseq-YYYYMMDD \
+  --out-dir out/aws-validation/rnaseq-ecr-overrides
+```
+
+Mirror the generated image manifest into retained ECR repositories:
+
+```bash
+common/aws-validation/mirror-ecr-images-from-manifest.sh \
+  --image-manifest out/aws-validation/rnaseq-ecr-overrides/image-manifest.tsv \
+  --ec2-role-arn arn:aws:iam::123456789012:role/example-ec2-role
+```
+
+For larger manifests, prefer the crane container mirror path. It copies
+registry-to-registry and avoids filling the local Docker image cache:
+
+```bash
+common/aws-validation/mirror-ecr-images-with-crane-container.sh \
+  --image-manifest out/aws-validation/scrnaseq-ecr-overrides/image-manifest.tsv \
+  --ec2-role-arn arn:aws:iam::123456789012:role/example-ec2-role
+```
+
+If Docker can pull an image but cannot push it because of local content-store
+blob errors, copy only the failed rows with the crane container fallback:
+
+```bash
+common/aws-validation/copy-ecr-images-with-crane-container.sh \
+  --failed-images out/aws-validation/ecr-image-mirror/failed-images.tsv
+```
+
+Verify that every generated ECR image is readable from the registry:
+
+```bash
+common/aws-validation/verify-ecr-images-from-manifest.sh \
+  --image-manifest out/aws-validation/rnaseq-ecr-overrides/image-manifest.tsv
+```
+
+Prove that a private EC2 host can pull selected ECR images before a full
+Nextflow run:
+
+```bash
+common/aws-validation/run-ec2-ecr-pull-proof-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --image 123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/example/repo:tag
+```
+
+Stage a downloaded workflow source tree and tiny rnaseq validation data to an
+approved private artifact path:
+
+```bash
+common/aws-validation/stage-workflow-source-to-s3.sh \
+  --source-dir /path/to/downloads/rnaseq/3_18_0 \
+  --s3-uri s3://example-bucket/nextflow-offline/workflows/rnaseq-3.18.0/3_18_0/
+
+common/aws-validation/stage-rnaseq-tiny-data-to-s3.sh \
+  --work-dir out/aws-validation/rnaseq-tiny-data \
+  --s3-uri s3://example-bucket/nextflow-offline/data/rnaseq-tiny/
+
+common/aws-validation/stage-scrnaseq-tiny-data-to-s3.sh \
+  --work-dir out/aws-validation/scrnaseq-tiny-data \
+  --s3-uri s3://example-bucket/nextflow-offline/data/scrnaseq-tiny/
+```
+
+Run an ECR-backed workflow from private S3 source and private S3 data:
+
+```bash
+common/aws-validation/run-ec2-ecr-workflow-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --workflow-s3-uri s3://example-bucket/nextflow-offline/workflows/rnaseq-3.18.0/3_18_0/ \
+  --data-s3-uri s3://example-bucket/nextflow-offline/data/rnaseq-tiny/ \
+  --ecr-config out/aws-validation/rnaseq-ecr-overrides/nextflow-ecr-containers.config \
+  --workflow-name rnaseq \
+  --max-cpus 1 \
+  --max-memory "2 GB"
+```
+
+The generic ECR path is data-driven:
+
+1. `nextflow inspect` provides process-to-container mappings.
+2. `generate-ecr-container-overrides.sh` creates ECR image names and a
+   `nextflow-ecr-containers.config` override file.
+3. `mirror-ecr-images-from-manifest.sh` creates or reuses ECR repositories,
+   pushes images, and keeps repositories for reuse.
+4. `copy-ecr-images-with-crane-container.sh` is an optional fallback for rows
+   that Docker reports in `failed-images.tsv`.
+5. `verify-ecr-images-from-manifest.sh` proves all ECR manifests are readable.
+6. `run-ec2-ecr-pull-proof-via-ssm.sh` proves the private EC2 runtime can pull
+   selected mirrored images.
+7. `run-ec2-ecr-workflow-via-ssm.sh` runs the private workflow source and data
+   with the generated ECR override config.
+
+For `scrnaseq` smoke validation, the runner disables only `CONCAT_H5AD` through
+the module's existing `ext.when` hook. The tiny dataset still proves workflow
+source sync, ECR image overrides, FASTQ input, FASTQC, GTF filtering, STAR
+genome generation, STARsolo alignment, per-matrix H5AD conversion, Seurat
+conversion, and MultiQC. The concat step is fragile on minimal synthetic
+metadata and is not needed for private image/runtime proof.
+
+Inventory retained validation ECR repositories:
+
+```bash
+common/aws-validation/ecr-validation-repo-lifecycle.sh \
+  --profile dev \
+  --region ap-southeast-1 \
+  --repo-prefix nextflow-offline/e2e-
+```
+
+Plan cleanup for exact reviewed repositories without deleting:
+
+```bash
+common/aws-validation/ecr-validation-repo-lifecycle.sh \
+  --profile dev \
+  --region ap-southeast-1 \
+  --repo-name nextflow-offline/e2e-example \
+  --dry-run-delete
+```
+
+Real deletion is intentionally hard-gated. Use it only after the inventory is
+reviewed and the exact repository names are approved:
+
+```bash
+common/aws-validation/ecr-validation-repo-lifecycle.sh \
+  --profile dev \
+  --region ap-southeast-1 \
+  --allowlist-file reviewed-ecr-delete-allowlist.txt \
+  --delete \
+  --confirm-delete-retained-validation-repos
+```
+
+The helper does not support wildcard delete. Default mode is read-only
+inventory.
+
 Explicit full-smoke (separate command):
 
 ```bash
@@ -120,6 +300,19 @@ common/aws-validation/stage-offline-bundle-to-s3.sh \
   --bundle-dir /path/to/downloads/testpipeline \
   --s3-uri s3://example-bucket/nextflow-offline/bundles/testpipeline-3.2.1/
 ```
+
+Validate a bundle locally without AWS/S3 access:
+
+```bash
+common/aws-validation/stage-offline-bundle-to-s3.sh \
+  --bundle-dir /path/to/downloads/testpipeline \
+  --validate-only
+```
+
+The staging script validates Docker TAR integrity before upload. It writes
+`.bundle-validation/docker-image-sizes.tsv` and
+`.bundle-validation/docker-image-sha256sum.txt` into the bundle. If a TAR has a
+missing manifest, config, or layer blob, staging stops before S3 upload.
 
 The bundle staging script does not delete destination objects by default. Use
 `--delete` only when that destructive sync is explicitly approved.
@@ -171,6 +364,8 @@ For private or no-Internet environments, use one of these image supply paths:
 2. ECR mirror
    - best AWS-native runtime registry path when ECR endpoints are available
    - requires an image import or mirror step
+   - a practical low-permission pattern is controller/CI push to ECR and EC2
+     pull from ECR
 3. Nexus Docker proxy
    - only valid after testing Docker CLI pull from inside the target VPC
    - a Nexus browser/API URL can work while Docker pull routing still fails
