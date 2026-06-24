@@ -15,8 +15,10 @@ Options:
   --region REGION          Default: ${AWS_REGION:-ap-southeast-1}
   --image-manifest FILE    Required. TSV with source_image/repository_name/tag/ecr_image.
   --ec2-role-arn ARN       Optional. Add repository policy allowing this role to pull.
+  --platform OS/ARCH       Default: linux/amd64. Use "none" to omit Docker platform flags.
   --out-dir DIR            Default: ~/.AGENTS-temp/offline/ecr-image-mirror-<timestamp>
   --no-pull                Do not pull source images; require them to already exist locally.
+  --continue-on-error      Continue after per-image pull/tag/push failure and write failed-images.tsv.
   --dry-run                Write plan only; do not create/push.
   --help
 
@@ -37,8 +39,10 @@ profile="${AWS_PROFILE:-dev}"
 region="${AWS_REGION:-ap-southeast-1}"
 image_manifest=""
 ec2_role_arn=""
+platform="linux/amd64"
 out_dir="$HOME/.AGENTS-temp/offline/ecr-image-mirror-$(date +%Y%m%d-%H%M%S)"
 pull_source="true"
+continue_on_error="false"
 dry_run="false"
 
 while [[ $# -gt 0 ]]; do
@@ -47,8 +51,10 @@ while [[ $# -gt 0 ]]; do
     --region) region="${2:?missing --region value}"; shift 2 ;;
     --image-manifest) image_manifest="${2:?missing --image-manifest value}"; shift 2 ;;
     --ec2-role-arn) ec2_role_arn="${2:?missing --ec2-role-arn value}"; shift 2 ;;
+    --platform) platform="${2:?missing --platform value}"; shift 2 ;;
     --out-dir) out_dir="${2:?missing --out-dir value}"; shift 2 ;;
     --no-pull) pull_source="false"; shift ;;
+    --continue-on-error) continue_on_error="true"; shift ;;
     --dry-run) dry_run="true"; shift ;;
     --help|-h) usage; exit 0 ;;
     *) die "unknown argument: $1" ;;
@@ -56,10 +62,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$image_manifest" && -f "$image_manifest" ]] || die "--image-manifest must be an existing file"
+[[ -n "$platform" ]] || die "--platform cannot be empty"
+if [[ "$platform" != "none" && ! "$platform" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)?$ ]]; then
+  die "--platform must be OS/ARCH, OS/ARCH/VARIANT, or none"
+fi
 
 need docker
 need jq
 need python3
+
+docker_platform_args=()
+if [[ "$platform" != "none" ]]; then
+  docker_platform_args=(--platform "$platform")
+fi
 
 mkdir -p "$out_dir"
 cp "$image_manifest" "$out_dir/image-manifest.tsv"
@@ -169,6 +184,9 @@ fi
 created_count=0
 pushed_count=0
 reused_count=0
+failed_count=0
+failed_images="$out_dir/failed-images.tsv"
+echo "source_image	repository_name	tag	ecr_image	stage" > "$failed_images"
 
 while IFS=$'\t' read -r source_image repository_name tag ecr_image; do
   [[ -n "$source_image" && -n "$repository_name" && -n "$tag" && -n "$ecr_image" ]] || continue
@@ -208,19 +226,44 @@ while IFS=$'\t' read -r source_image repository_name tag ecr_image; do
   fi
 
   if [[ "$pull_source" == "true" ]]; then
-    docker pull "$source_image" >> "$out_dir/docker-pull.log" 2>> "$out_dir/docker-pull.stderr"
+    if ! docker pull "${docker_platform_args[@]}" "$source_image" >> "$out_dir/docker-pull.log" 2>> "$out_dir/docker-pull.stderr"; then
+      echo "$source_image	$repository_name	$tag	$ecr_image	pull" >> "$failed_images"
+      failed_count=$((failed_count + 1))
+      [[ "$continue_on_error" == "true" ]] && continue
+      die "docker pull failed for $source_image"
+    fi
   fi
   inspect_file="$out_dir/docker-inspect-${pushed_count}.json"
-  docker image inspect "$source_image" > "$inspect_file" 2>> "$out_dir/docker-inspect.stderr"
-  docker tag "$source_image" "$ecr_image" >> "$out_dir/docker-tag.log" 2>> "$out_dir/docker-tag.stderr"
-  docker push "$ecr_image" >> "$out_dir/docker-push.log" 2>> "$out_dir/docker-push.stderr"
+  if ! docker image inspect "$source_image" > "$inspect_file" 2>> "$out_dir/docker-inspect.stderr"; then
+    echo "$source_image	$repository_name	$tag	$ecr_image	inspect" >> "$failed_images"
+    failed_count=$((failed_count + 1))
+    [[ "$continue_on_error" == "true" ]] && continue
+    die "docker inspect failed for $source_image"
+  fi
+  if ! docker tag "$source_image" "$ecr_image" >> "$out_dir/docker-tag.log" 2>> "$out_dir/docker-tag.stderr"; then
+    echo "$source_image	$repository_name	$tag	$ecr_image	tag" >> "$failed_images"
+    failed_count=$((failed_count + 1))
+    [[ "$continue_on_error" == "true" ]] && continue
+    die "docker tag failed for $source_image"
+  fi
+  if ! docker push "${docker_platform_args[@]}" "$ecr_image" >> "$out_dir/docker-push.log" 2>> "$out_dir/docker-push.stderr"; then
+    echo "$source_image	$repository_name	$tag	$ecr_image	push" >> "$failed_images"
+    failed_count=$((failed_count + 1))
+    [[ "$continue_on_error" == "true" ]] && continue
+    die "docker push failed for $ecr_image"
+  fi
   pushed_count=$((pushed_count + 1))
 done < <(tail -n +2 "$image_manifest")
+
+status="pushed"
+if [[ "$failed_count" -gt 0 ]]; then
+  status="partial"
+fi
 
 cat > "$out_dir/RESULT.md" <<RESULT
 # RESULT - ECR Image Mirror
 
-Status: pushed
+Status: $status
 
 Profile/region:
 - $profile / $region
@@ -229,6 +272,8 @@ Counts:
 - created_repositories: $created_count
 - reused_repositories: $reused_count
 - pushed_images: $pushed_count
+- failed_images: $failed_count
+- platform: $platform
 
 Manifest:
 - $image_manifest
@@ -239,6 +284,7 @@ Evidence:
 - $out_dir/docker-push.log
 - $out_dir/ecr-create-repositories.jsonl
 - $out_dir/ecr-set-repository-policies.jsonl
+- $out_dir/failed-images.tsv
 
 Cleanup:
 - ECR repositories retained by design.
