@@ -135,6 +135,33 @@ FASTA validator images, pushes them from approved S3 Docker TARs, grants the
 EC2 role pull access, runs the local S3-bundle workflow with ECR container
 overrides and small resource caps, then deletes the temporary ECR repos.
 
+Generate a generic ECR image manifest and Nextflow override config from
+`nextflow inspect -format json`:
+
+```bash
+common/aws-validation/generate-ecr-container-overrides.sh \
+  --inspect-json /path/to/pipeline.inspect.json \
+  --account-id 123456789012 \
+  --repo-prefix nextflow-offline/e2e-rnaseq-YYYYMMDD \
+  --out-dir out/aws-validation/rnaseq-ecr-overrides
+```
+
+Mirror the generated image manifest into retained ECR repositories:
+
+```bash
+common/aws-validation/mirror-ecr-images-from-manifest.sh \
+  --image-manifest out/aws-validation/rnaseq-ecr-overrides/image-manifest.tsv \
+  --ec2-role-arn arn:aws:iam::123456789012:role/example-ec2-role
+```
+
+The generic ECR path is data-driven:
+
+1. `nextflow inspect` provides process-to-container mappings.
+2. `generate-ecr-container-overrides.sh` creates ECR image names and a
+   `nextflow-ecr-containers.config` override file.
+3. `mirror-ecr-images-from-manifest.sh` creates or reuses ECR repositories,
+   pushes images, and keeps repositories for reuse.
+
 Inventory retained validation ECR repositories:
 
 ```bash

@@ -20,8 +20,10 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Run a minimal DEV ECR image-path proof | `run-dev-ecr-nextflow-e2e-via-ssm.sh` | covered | Proves EC2 can pull a mirrored image from ECR. |
 | Run `nf-core/testpipeline` through DEV ECR | `run-dev-ecr-testpipeline-e2e-via-ssm.sh` | covered | Small end-to-end workflow validation path. |
 | Run `bamtofastq` through DEV ECR | `run-dev-ecr-bamtofastq-e2e-via-ssm.sh` | covered | Pipeline-specific ECR validation path. |
+| Generate generic ECR process overrides | `generate-ecr-container-overrides.sh` | covered | Converts `nextflow inspect` process/container mappings into an ECR manifest and Nextflow config. |
+| Mirror generic image manifest to ECR | `mirror-ecr-images-from-manifest.sh` | covered | Creates or reuses retained ECR repositories and pushes source images. |
 | Run `scrnaseq` through DEV ECR | none yet | blocked | Needs accessible offline input data before a real E2E runner is useful. |
-| Run larger pipelines such as `rnaseq` or `sarek` through DEV ECR | none yet | planned | Add only after input data, image inventory, disk sizing, and resource caps are known. |
+| Run larger pipelines such as `rnaseq` or `sarek` through DEV ECR | generic manifest/config path exists | planned | Full execution needs mirrored images, input data, and AWS auth. |
 | Retained ECR repo lifecycle review | `ecr-validation-repo-lifecycle.sh` | covered/read-only | Cleanup remains explicit allowlist and approval gated. |
 
 ## Definition Of Done For One Pipeline E2E
@@ -51,7 +53,7 @@ available or a realistic synthetic dataset is approved.
 
 ## Next Good Code Additions
 
-- Add a generic pipeline ECR runner after two or three pipeline-specific runners
-  have stabilized enough to avoid hiding special cases.
+- Use the generic ECR manifest/config path for `rnaseq` after AWS auth is
+  renewed and images are mirrored.
 - Add `scrnaseq`, `rnaseq`, and `sarek` runners only after their offline input
   data and resource caps are proven.
