@@ -23,8 +23,11 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Generate generic ECR process overrides | `generate-ecr-container-overrides.sh` | covered | Converts `nextflow inspect` process/container mappings into an ECR manifest and Nextflow config. |
 | Mirror generic image manifest to ECR | `mirror-ecr-images-from-manifest.sh` | covered | Creates or reuses retained ECR repositories and pushes source images. |
 | Copy Docker-failed mirror rows to ECR | `copy-ecr-images-with-crane-container.sh` | covered | Fallback for images Docker can pull but cannot push from local content-store state. |
+| Verify mirrored ECR manifests | `verify-ecr-images-from-manifest.sh` | covered | Readback gate after Docker and crane mirror steps. |
+| Prove private EC2 can pull ECR images | `run-ec2-ecr-pull-proof-via-ssm.sh` | covered | Runtime pull gate before a full Nextflow ECR run. |
 | Run `scrnaseq` through DEV ECR | none yet | blocked | Needs accessible offline input data before a real E2E runner is useful. |
-| Run larger pipelines such as `rnaseq` or `sarek` through DEV ECR | generic manifest/config path exists | planned | Full execution needs mirrored images, input data, and AWS auth. |
+| Run `rnaseq` through DEV ECR | generic manifest/config path exists | next | ECR image supply is proven; full run needs approved offline input data. |
+| Run larger pipelines such as `sarek` through DEV ECR | generic manifest/config path exists | planned | Full execution needs mirrored images, input data, and resource sizing. |
 | Retained ECR repo lifecycle review | `ecr-validation-repo-lifecycle.sh` | covered/read-only | Cleanup remains explicit allowlist and approval gated. |
 
 ## Definition Of Done For One Pipeline E2E
@@ -47,14 +50,18 @@ For S3 Docker TAR preload, the bundle must pass
 
 ## Current Known Blocker
 
-`scrnaseq` is not fully code-owned yet because the customized workflow points to
-input data that is not available from the approved offline/private validation
-path. Do not add a final `scrnaseq` ECR runner until the input dataset is
-available or a realistic synthetic dataset is approved.
+`rnaseq` is the next pipeline to validate. Its ECR image supply path is proven,
+but the full Nextflow run still needs a small approved offline input dataset.
+
+`scrnaseq` is not fully code-owned yet because the customized workflow points
+to input data that is not available from the approved offline/private
+validation path. Do not add a final `scrnaseq` ECR runner until the input
+dataset is available or a realistic synthetic dataset is approved.
 
 ## Next Good Code Additions
 
-- Use the generic ECR manifest/config path for `rnaseq` after images are
-  mirrored and a small offline input-data plan is ready.
-- Add `scrnaseq`, `rnaseq`, and `sarek` runners only after their offline input
-  data and resource caps are proven.
+- Add a small approved `rnaseq` offline input-data staging flow, then run
+  `rnaseq` with the generated ECR container override config and `1 CPU / 2 GB`
+  caps.
+- Add `scrnaseq` and `sarek` runners only after their offline input data and
+  resource caps are proven.

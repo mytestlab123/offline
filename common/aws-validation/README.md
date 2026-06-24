@@ -162,6 +162,22 @@ common/aws-validation/copy-ecr-images-with-crane-container.sh \
   --failed-images out/aws-validation/ecr-image-mirror/failed-images.tsv
 ```
 
+Verify that every generated ECR image is readable from the registry:
+
+```bash
+common/aws-validation/verify-ecr-images-from-manifest.sh \
+  --image-manifest out/aws-validation/rnaseq-ecr-overrides/image-manifest.tsv
+```
+
+Prove that a private EC2 host can pull selected ECR images before a full
+Nextflow run:
+
+```bash
+common/aws-validation/run-ec2-ecr-pull-proof-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --image 123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/example/repo:tag
+```
+
 The generic ECR path is data-driven:
 
 1. `nextflow inspect` provides process-to-container mappings.
@@ -171,6 +187,9 @@ The generic ECR path is data-driven:
    pushes images, and keeps repositories for reuse.
 4. `copy-ecr-images-with-crane-container.sh` is an optional fallback for rows
    that Docker reports in `failed-images.tsv`.
+5. `verify-ecr-images-from-manifest.sh` proves all ECR manifests are readable.
+6. `run-ec2-ecr-pull-proof-via-ssm.sh` proves the private EC2 runtime can pull
+   selected mirrored images.
 
 Inventory retained validation ECR repositories:
 
