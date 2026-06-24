@@ -9,6 +9,8 @@ For AI Agent and Task Management
 - Always use `AGENTS.md`.
 - The old `ai/` folder is archived under `archive/ai-20260623/`.
 - Do not use archived `ai/` files as active task instructions.
+- Current public-safe project snapshot:
+  `docs/NEXTFLOW_OFFLINE_STATUS_20260624.md`.
 
 Key Ideas
 - Single ENV per pipeline (no global auto-load). Source manually: `source ~/.env; source ENV`.
