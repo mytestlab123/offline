@@ -178,6 +178,32 @@ common/aws-validation/run-ec2-ecr-pull-proof-via-ssm.sh \
   --image 123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/example/repo:tag
 ```
 
+Stage a downloaded workflow source tree and tiny rnaseq validation data to an
+approved private artifact path:
+
+```bash
+common/aws-validation/stage-workflow-source-to-s3.sh \
+  --source-dir /path/to/downloads/rnaseq/3_18_0 \
+  --s3-uri s3://example-bucket/nextflow-offline/workflows/rnaseq-3.18.0/3_18_0/
+
+common/aws-validation/stage-rnaseq-tiny-data-to-s3.sh \
+  --work-dir out/aws-validation/rnaseq-tiny-data \
+  --s3-uri s3://example-bucket/nextflow-offline/data/rnaseq-tiny/
+```
+
+Run an ECR-backed workflow from private S3 source and private S3 data:
+
+```bash
+common/aws-validation/run-ec2-ecr-workflow-via-ssm.sh \
+  --instance-id i-xxxxxxxxxxxxxxxxx \
+  --workflow-s3-uri s3://example-bucket/nextflow-offline/workflows/rnaseq-3.18.0/3_18_0/ \
+  --data-s3-uri s3://example-bucket/nextflow-offline/data/rnaseq-tiny/ \
+  --ecr-config out/aws-validation/rnaseq-ecr-overrides/nextflow-ecr-containers.config \
+  --workflow-name rnaseq \
+  --max-cpus 1 \
+  --max-memory "2 GB"
+```
+
 The generic ECR path is data-driven:
 
 1. `nextflow inspect` provides process-to-container mappings.
@@ -190,6 +216,8 @@ The generic ECR path is data-driven:
 5. `verify-ecr-images-from-manifest.sh` proves all ECR manifests are readable.
 6. `run-ec2-ecr-pull-proof-via-ssm.sh` proves the private EC2 runtime can pull
    selected mirrored images.
+7. `run-ec2-ecr-workflow-via-ssm.sh` runs the private workflow source and data
+   with the generated ECR override config.
 
 Inventory retained validation ECR repositories:
 

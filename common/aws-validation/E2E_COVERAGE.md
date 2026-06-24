@@ -25,8 +25,11 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Copy Docker-failed mirror rows to ECR | `copy-ecr-images-with-crane-container.sh` | covered | Fallback for images Docker can pull but cannot push from local content-store state. |
 | Verify mirrored ECR manifests | `verify-ecr-images-from-manifest.sh` | covered | Readback gate after Docker and crane mirror steps. |
 | Prove private EC2 can pull ECR images | `run-ec2-ecr-pull-proof-via-ssm.sh` | covered | Runtime pull gate before a full Nextflow ECR run. |
+| Stage downloaded workflow source to private artifact storage | `stage-workflow-source-to-s3.sh` | covered | Keeps workflow execution Git-free on private EC2 hosts. |
+| Stage tiny rnaseq offline data | `stage-rnaseq-tiny-data-to-s3.sh` | covered | Creates deterministic FASTQ/FASTA/GTF smoke data for small validation hosts. |
+| Run a generic private S3 workflow with ECR images | `run-ec2-ecr-workflow-via-ssm.sh` | covered | Runs private workflow source and private data with generated ECR container overrides. |
 | Run `scrnaseq` through DEV ECR | none yet | blocked | Needs accessible offline input data before a real E2E runner is useful. |
-| Run `rnaseq` through DEV ECR | generic manifest/config path exists | next | ECR image supply is proven; full run needs approved offline input data. |
+| Run `rnaseq` through DEV ECR | generic ECR workflow runner | covered | Tiny offline data smoke passed with ECR image overrides, FastQC, and MultiQC. |
 | Run larger pipelines such as `sarek` through DEV ECR | generic manifest/config path exists | planned | Full execution needs mirrored images, input data, and resource sizing. |
 | Retained ECR repo lifecycle review | `ecr-validation-repo-lifecycle.sh` | covered/read-only | Cleanup remains explicit allowlist and approval gated. |
 
@@ -50,8 +53,10 @@ For S3 Docker TAR preload, the bundle must pass
 
 ## Current Known Blocker
 
-`rnaseq` is the next pipeline to validate. Its ECR image supply path is proven,
-but the full Nextflow run still needs a small approved offline input dataset.
+`rnaseq` has a complete small-host ECR smoke path. It uses private workflow
+source, private tiny input data, generated ECR container overrides, and
+`1 CPU / 2 GB` caps. The smoke confirms FastQC and MultiQC execution; it is not
+a biological correctness test.
 
 `scrnaseq` is not fully code-owned yet because the customized workflow points
 to input data that is not available from the approved offline/private
@@ -60,8 +65,7 @@ dataset is available or a realistic synthetic dataset is approved.
 
 ## Next Good Code Additions
 
-- Add a small approved `rnaseq` offline input-data staging flow, then run
-  `rnaseq` with the generated ECR container override config and `1 CPU / 2 GB`
-  caps.
-- Add `scrnaseq` and `sarek` runners only after their offline input data and
-  resource caps are proven.
+- Reuse the generic ECR workflow runner for the next pipeline after its input
+  data and resource caps are proven.
+- Add `scrnaseq` and `sarek` runners or wrapper examples only after their
+  offline input data and resource caps are proven.
