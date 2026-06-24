@@ -22,6 +22,7 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Run `bamtofastq` through DEV ECR | `run-dev-ecr-bamtofastq-e2e-via-ssm.sh` | covered | Pipeline-specific ECR validation path. |
 | Generate generic ECR process overrides | `generate-ecr-container-overrides.sh` | covered | Converts `nextflow inspect` process/container mappings into an ECR manifest and Nextflow config. |
 | Mirror generic image manifest to ECR | `mirror-ecr-images-from-manifest.sh` | covered | Creates or reuses retained ECR repositories and pushes source images. |
+| Copy Docker-failed mirror rows to ECR | `copy-ecr-images-with-crane-container.sh` | covered | Fallback for images Docker can pull but cannot push from local content-store state. |
 | Run `scrnaseq` through DEV ECR | none yet | blocked | Needs accessible offline input data before a real E2E runner is useful. |
 | Run larger pipelines such as `rnaseq` or `sarek` through DEV ECR | generic manifest/config path exists | planned | Full execution needs mirrored images, input data, and AWS auth. |
 | Retained ECR repo lifecycle review | `ecr-validation-repo-lifecycle.sh` | covered/read-only | Cleanup remains explicit allowlist and approval gated. |
@@ -53,7 +54,7 @@ available or a realistic synthetic dataset is approved.
 
 ## Next Good Code Additions
 
-- Use the generic ECR manifest/config path for `rnaseq` after AWS auth is
-  renewed and images are mirrored.
+- Use the generic ECR manifest/config path for `rnaseq` after images are
+  mirrored and a small offline input-data plan is ready.
 - Add `scrnaseq`, `rnaseq`, and `sarek` runners only after their offline input
   data and resource caps are proven.

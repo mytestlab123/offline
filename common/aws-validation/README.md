@@ -154,6 +154,14 @@ common/aws-validation/mirror-ecr-images-from-manifest.sh \
   --ec2-role-arn arn:aws:iam::123456789012:role/example-ec2-role
 ```
 
+If Docker can pull an image but cannot push it because of local content-store
+blob errors, copy only the failed rows with the crane container fallback:
+
+```bash
+common/aws-validation/copy-ecr-images-with-crane-container.sh \
+  --failed-images out/aws-validation/ecr-image-mirror/failed-images.tsv
+```
+
 The generic ECR path is data-driven:
 
 1. `nextflow inspect` provides process-to-container mappings.
@@ -161,6 +169,8 @@ The generic ECR path is data-driven:
    `nextflow-ecr-containers.config` override file.
 3. `mirror-ecr-images-from-manifest.sh` creates or reuses ECR repositories,
    pushes images, and keeps repositories for reuse.
+4. `copy-ecr-images-with-crane-container.sh` is an optional fallback for rows
+   that Docker reports in `failed-images.tsv`.
 
 Inventory retained validation ECR repositories:
 
