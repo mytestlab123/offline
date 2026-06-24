@@ -1,0 +1,36 @@
+# CloudOS release manifest example (public-safe placeholder draft).
+pipeline: bamtofastq
+upstream_repo: nf-core/bamtofastq
+upstream_version: to-confirm
+gitlab_repo: <private_gitlab_repo_url>
+gitlab_ref: v<upstream_version>-trust.1
+cloudos_tool_name: bamtofastq
+cloudos_tool_version: v<upstream_version>-trust.1
+status: example_not_live_approved
+
+workflow_source:
+  type: gitlab
+  ref: v<upstream_version>-trust.1
+  auth: pat
+
+data:
+  manifest: <private_data_manifest_path>
+  base_path: <private_data_base_path>
+
+containers:
+  manifest: <private_container_manifest_path>
+  runtime_path: <private_container_runtime_path>
+
+params:
+  file: <private_params_json_path>
+  resource_caps: <private_resource_caps_reference>
+
+output:
+  path: <private_output_path>
+  retention: <private_retention_rule>
+
+evidence:
+  code_tag_proof: <private_code_tag_proof_path>
+  data_manifest_proof: <private_data_manifest_proof_path>
+  container_manifest_proof: <private_container_manifest_proof_path>
+  cloudos_run_proof: <private_run_proof_path>

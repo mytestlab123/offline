@@ -17,6 +17,8 @@ Key Ideas
 - No security hardening, no container mirroring; choose quay‑only revisions.
 - First prove offline bundle tooling with `common/offline-smoke/nf-core-download-smoke.sh`.
 - Keep Docker and containerd data on a large volume before large pipeline downloads.
+- Final CloudOS Tool releases must use private GitLab tags pinned to exact
+  upstream versions; see `PIPELINE_RELEASE_CONTRACT.md`.
 
 Repo Layout
 - `common/pipeline/` – shared `setup.sh`, `justfile`, helpers.
@@ -82,6 +84,8 @@ Notes
 
 More
 - See GETTING_STARTED.md for step‑by‑step demos (demo + rnaseq).
+- See PIPELINE_RELEASE_CONTRACT.md for the GitLab tag, CloudOS Tool, data,
+  container, params, and output contract.
 
 GitLab Repo Creation (optional)
 - Script: `common/gitlab/create_repo.sh`
