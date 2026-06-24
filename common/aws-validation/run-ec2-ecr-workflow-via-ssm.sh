@@ -15,7 +15,7 @@ Options:
   --region REGION            Default: ${AWS_REGION:-ap-southeast-1}
   --instance-id ID           Required.
   --workflow-s3-uri URI      Required unless NEXTFLOW_OFFLINE_WORKFLOW_S3_URI is set.
-  --data-s3-uri URI          Required unless NEXTFLOW_OFFLINE_RNASEQ_TINY_DATA_S3_URI is set.
+  --data-s3-uri URI          Required unless NEXTFLOW_OFFLINE_DATA_S3_URI is set.
   --ecr-config FILE          Required. Nextflow config with ECR container overrides.
   --remote-root DIR          Default: /opt/nextflow-offline
   --workspace DIR            Default: <remote-root>/ecr-workflow-e2e
@@ -70,7 +70,7 @@ profile="${AWS_PROFILE:-default}"
 region="${AWS_REGION:-ap-southeast-1}"
 instance_id=""
 workflow_s3_uri="${NEXTFLOW_OFFLINE_WORKFLOW_S3_URI:-}"
-data_s3_uri="${NEXTFLOW_OFFLINE_RNASEQ_TINY_DATA_S3_URI:-}"
+data_s3_uri="${NEXTFLOW_OFFLINE_DATA_S3_URI:-${NEXTFLOW_OFFLINE_RNASEQ_TINY_DATA_S3_URI:-}}"
 ecr_config=""
 remote_root="/opt/nextflow-offline"
 workspace=""
@@ -258,6 +258,24 @@ CSV
   } >> "$run_dir/nextflow-params.tsv"
 fi
 
+if [[ "$workflow_name" == "scrnaseq" ]]; then
+  test -f "$data_dir/tiny_R1.fastq.gz"
+  test -f "$data_dir/tiny_R2.fastq.gz"
+  test -f "$data_dir/genome.fasta"
+  test -f "$data_dir/genes.gtf"
+  cat > "$run_dir/samplesheet.csv" <<CSV
+sample,fastq_1,fastq_2,protocol,expected_cells
+tiny,$data_dir/tiny_R1.fastq.gz,$data_dir/tiny_R2.fastq.gz,10XV2,1
+CSV
+  {
+    printf 'input\t%s\n' "$run_dir/samplesheet.csv"
+    printf 'fasta\t%s\n' "$data_dir/genome.fasta"
+    printf 'gtf\t%s\n' "$data_dir/genes.gtf"
+    printf 'aligner\tstar\n'
+    printf 'protocol\t10XV2\n'
+  } >> "$run_dir/nextflow-params.tsv"
+fi
+
 nextflow_extra_args=()
 while IFS=$'\t' read -r key value; do
   [[ -n "${key:-}" ]] || continue
@@ -285,6 +303,8 @@ params {
   skip_rseqc = true
   skip_biotype_qc = true
   skip_deseq2_qc = true
+  skip_emptydrops = true
+  validationSchemaIgnoreParams = 'genomes'
   max_cpus = $max_cpus
   max_memory = '$max_memory'
   max_time = '1.h'
@@ -311,6 +331,15 @@ process {
   withLabel: 'process_high' {
     cpus = $max_cpus
     memory = '$max_memory'
+  }
+
+  withName: 'STAR_GENOMEGENERATE' {
+    cpus = $max_cpus
+    memory = '$max_memory'
+    ext.args = '--genomeSAindexNbases 1'
+  }
+  withName: 'CONCAT_H5AD' {
+    ext.when = false
   }
 }
 CONF

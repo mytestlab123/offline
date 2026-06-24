@@ -28,7 +28,8 @@ hostnames, and real bucket names in a local `.env` or evidence packet, not here.
 | Stage downloaded workflow source to private artifact storage | `stage-workflow-source-to-s3.sh` | covered | Keeps workflow execution Git-free on private EC2 hosts. |
 | Stage tiny rnaseq offline data | `stage-rnaseq-tiny-data-to-s3.sh` | covered | Creates deterministic FASTQ/FASTA/GTF smoke data for small validation hosts. |
 | Run a generic private S3 workflow with ECR images | `run-ec2-ecr-workflow-via-ssm.sh` | covered | Runs private workflow source and private data with generated ECR container overrides. |
-| Run `scrnaseq` through DEV ECR | none yet | blocked | Needs accessible offline input data before a real E2E runner is useful. |
+| Stage tiny scrnaseq offline data | `stage-scrnaseq-tiny-data-to-s3.sh` | covered | Creates deterministic 10xV2-style FASTQ, FASTA, and GTF smoke data for small validation hosts. |
+| Run `scrnaseq` through DEV ECR | generic ECR workflow runner | covered | Tiny offline data smoke passed with ECR image overrides; `CONCAT_H5AD` is disabled for smoke only. |
 | Run `rnaseq` through DEV ECR | generic ECR workflow runner | covered | Tiny offline data smoke passed with ECR image overrides, FastQC, and MultiQC. |
 | Run larger pipelines such as `sarek` through DEV ECR | generic manifest/config path exists | planned | Full execution needs mirrored images, input data, and resource sizing. |
 | Retained ECR repo lifecycle review | `ecr-validation-repo-lifecycle.sh` | covered/read-only | Cleanup remains explicit allowlist and approval gated. |
@@ -58,14 +59,16 @@ source, private tiny input data, generated ECR container overrides, and
 `1 CPU / 2 GB` caps. The smoke confirms FastQC and MultiQC execution; it is not
 a biological correctness test.
 
-`scrnaseq` is not fully code-owned yet because the customized workflow points
-to input data that is not available from the approved offline/private
-validation path. Do not add a final `scrnaseq` ECR runner until the input
-dataset is available or a realistic synthetic dataset is approved.
+`scrnaseq` has a complete small-host ECR smoke path for private runtime proof.
+It uses private workflow source, private tiny input data, generated ECR
+container overrides, retained ECR repositories, and `1 CPU / 2 GB` caps. The
+smoke disables only `CONCAT_H5AD` because the minimal synthetic samplesheet can
+trigger an old H5AD metadata write error in the concat script. STARsolo,
+per-matrix H5AD conversion, Seurat conversion, and MultiQC still execute.
 
 ## Next Good Code Additions
 
 - Reuse the generic ECR workflow runner for the next pipeline after its input
   data and resource caps are proven.
-- Add `scrnaseq` and `sarek` runners or wrapper examples only after their
-  offline input data and resource caps are proven.
+- Add `sarek` runner examples only after its offline input data and resource
+  caps are proven.

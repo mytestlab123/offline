@@ -154,6 +154,15 @@ common/aws-validation/mirror-ecr-images-from-manifest.sh \
   --ec2-role-arn arn:aws:iam::123456789012:role/example-ec2-role
 ```
 
+For larger manifests, prefer the crane container mirror path. It copies
+registry-to-registry and avoids filling the local Docker image cache:
+
+```bash
+common/aws-validation/mirror-ecr-images-with-crane-container.sh \
+  --image-manifest out/aws-validation/scrnaseq-ecr-overrides/image-manifest.tsv \
+  --ec2-role-arn arn:aws:iam::123456789012:role/example-ec2-role
+```
+
 If Docker can pull an image but cannot push it because of local content-store
 blob errors, copy only the failed rows with the crane container fallback:
 
@@ -189,6 +198,10 @@ common/aws-validation/stage-workflow-source-to-s3.sh \
 common/aws-validation/stage-rnaseq-tiny-data-to-s3.sh \
   --work-dir out/aws-validation/rnaseq-tiny-data \
   --s3-uri s3://example-bucket/nextflow-offline/data/rnaseq-tiny/
+
+common/aws-validation/stage-scrnaseq-tiny-data-to-s3.sh \
+  --work-dir out/aws-validation/scrnaseq-tiny-data \
+  --s3-uri s3://example-bucket/nextflow-offline/data/scrnaseq-tiny/
 ```
 
 Run an ECR-backed workflow from private S3 source and private S3 data:
@@ -218,6 +231,13 @@ The generic ECR path is data-driven:
    selected mirrored images.
 7. `run-ec2-ecr-workflow-via-ssm.sh` runs the private workflow source and data
    with the generated ECR override config.
+
+For `scrnaseq` smoke validation, the runner disables only `CONCAT_H5AD` through
+the module's existing `ext.when` hook. The tiny dataset still proves workflow
+source sync, ECR image overrides, FASTQ input, FASTQC, GTF filtering, STAR
+genome generation, STARsolo alignment, per-matrix H5AD conversion, Seurat
+conversion, and MultiQC. The concat step is fragile on minimal synthetic
+metadata and is not needed for private image/runtime proof.
 
 Inventory retained validation ECR repositories:
 
