@@ -17,7 +17,7 @@ Options:
   --repo-prefix NAME        Default: nextflow-offline/e2e-generic
   --max-cpus N              Default: 1
   --max-memory SIZE         Default: 2 GB
-  --out-dir DIR             Default: out/aws-validation/ecr-container-overrides
+  --out-dir DIR             Default: ~/.AGENTS-temp/offline/ecr-container-overrides-<timestamp>
   --help
 
 Outputs:
@@ -43,7 +43,9 @@ account_id=""
 repo_prefix="nextflow-offline/e2e-generic"
 max_cpus="1"
 max_memory="2 GB"
-out_dir="out/aws-validation/ecr-container-overrides"
+home_dir="${HOME:-}"
+[[ -n "$home_dir" ]] || die "HOME is required unless --out-dir is provided"
+out_dir="$home_dir/.AGENTS-temp/offline/ecr-container-overrides-$(date +%Y%m%d-%H%M%S)"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,6 +64,7 @@ done
 [[ -n "$inspect_json" && -f "$inspect_json" ]] || die "--inspect-json must be an existing file"
 [[ "$account_id" =~ ^[0-9]{12}$ ]] || die "--account-id must be a 12 digit AWS account ID"
 [[ -n "$repo_prefix" ]] || die "--repo-prefix cannot be empty"
+[[ "$repo_prefix" =~ ^[a-z0-9]+([._/-]?[a-z0-9]+)*$ ]] || die "--repo-prefix is not a valid ECR repository prefix"
 
 need jq
 need python3
@@ -97,6 +100,12 @@ def sanitize_repo_part(value):
     value = re.sub(r"([._-]){2,}", r"\1", value)
     return value or "image"
 
+def validate_repo_name(value, source_image):
+    if len(value) > 256:
+        raise ValueError(f"ECR repository name too long for {source_image}: {value}")
+    if not re.match(r"^[a-z0-9]+([._/-]?[a-z0-9]+)*$", value):
+        raise ValueError(f"Invalid ECR repository name for {source_image}: {value}")
+
 def sanitize_tag(value):
     value = re.sub(r"[^A-Za-z0-9_.-]+", "-", value)
     value = value.strip(".-")
@@ -129,10 +138,18 @@ process_rows = []
 images = {}
 with open(process_tsv, encoding="utf-8") as handle:
     reader = csv.reader(handle, delimiter="\t")
-    for process_name, source_image in reader:
+    for line_number, row in enumerate(reader, start=1):
+        if len(row) != 2:
+            raise ValueError(f"Invalid process/container row {line_number}: expected 2 columns, got {len(row)}")
+        process_name, source_image = row
+        process_name = process_name.strip()
+        source_image = source_image.strip()
+        if not process_name or not source_image:
+            raise ValueError(f"Invalid process/container row {line_number}: empty process or image")
         repo_path, tag = parse_image(source_image)
         digest = hashlib.sha1(source_image.encode("utf-8")).hexdigest()[:10]
         repo_name = f"{repo_prefix.rstrip('/')}/{repo_path}-{digest}"
+        validate_repo_name(repo_name, source_image)
         ecr_image = f"{registry}/{repo_name}:{tag}"
         images[source_image] = (repo_name, tag, ecr_image)
         process_rows.append((process_name, source_image, ecr_image))

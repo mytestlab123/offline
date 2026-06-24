@@ -57,18 +57,62 @@ done
 
 [[ -n "$image_manifest" && -f "$image_manifest" ]] || die "--image-manifest must be an existing file"
 
-need awk
 need docker
 need jq
+need python3
 
 mkdir -p "$out_dir"
 cp "$image_manifest" "$out_dir/image-manifest.tsv"
 
-awk -F '\t' 'NR == 1 {
-  if ($1 != "source_image" || $2 != "repository_name" || $3 != "tag" || $4 != "ecr_image") {
-    exit 2
-  }
-}' "$image_manifest" || die "image manifest header is invalid"
+python3 - "$image_manifest" "$out_dir/manifest-validation.tsv" <<'PY'
+import csv
+import re
+import sys
+
+manifest, validation_out = sys.argv[1:]
+repo_re = re.compile(r"^[a-z0-9]+([._/-]?[a-z0-9]+)*$")
+tag_re = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
+ecr_re = re.compile(r"^(?P<registry>[0-9]{12}\.dkr\.ecr\.[A-Za-z0-9-]+\.amazonaws(?:\.com(?:\.cn)?|\.com))/(?:.+):.+$")
+errors = []
+rows = []
+
+with open(manifest, newline="", encoding="utf-8") as handle:
+    reader = csv.reader(handle, delimiter="\t")
+    header = next(reader, None)
+    if header != ["source_image", "repository_name", "tag", "ecr_image"]:
+        errors.append(f"invalid header: {header}")
+    for line_number, row in enumerate(reader, start=2):
+        if len(row) != 4:
+            errors.append(f"line {line_number}: expected 4 columns, got {len(row)}")
+            continue
+        source_image, repository_name, tag, ecr_image = [value.strip() for value in row]
+        rows.append((line_number, source_image, repository_name, tag, ecr_image))
+        if not source_image:
+            errors.append(f"line {line_number}: source_image is empty")
+        if not repo_re.match(repository_name) or len(repository_name) > 256:
+            errors.append(f"line {line_number}: invalid repository_name: {repository_name}")
+        if not tag_re.match(tag):
+            errors.append(f"line {line_number}: invalid tag: {tag}")
+        match = ecr_re.match(ecr_image)
+        if not match:
+            errors.append(f"line {line_number}: invalid ecr_image: {ecr_image}")
+        else:
+            expected_ecr_image = f"{match.group('registry')}/{repository_name}:{tag}"
+            if ecr_image != expected_ecr_image:
+                errors.append(
+                    f"line {line_number}: ecr_image does not match repository_name/tag: {ecr_image}"
+                )
+
+with open(validation_out, "w", encoding="utf-8") as handle:
+    handle.write("line\tsource_image\trepository_name\ttag\tecr_image\n")
+    for row in rows:
+        handle.write("\t".join(str(value) for value in row) + "\n")
+
+if errors:
+    for error in errors:
+        print(error, file=sys.stderr)
+    sys.exit(1)
+PY
 
 repository_policy="$out_dir/ecr-repository-policy.json"
 if [[ -n "$ec2_role_arn" ]]; then
@@ -150,7 +194,8 @@ while IFS=$'\t' read -r source_image repository_name tag ecr_image; do
         Key=TTL,Value=review-month-end \
         Key=purpose,Value=nextflow-offline-ecr-mirror \
         Key=phase,Value=ecr-pipeline-e2e \
-      >> "$out_dir/ecr-create-repositories.jsonl"
+        >> "$out_dir/ecr-create-repositories.jsonl" \
+        2>> "$out_dir/ecr-create-repositories.stderr"
     created_count=$((created_count + 1))
   fi
 
@@ -158,15 +203,17 @@ while IFS=$'\t' read -r source_image repository_name tag ecr_image; do
     aws --profile "$profile" --region "$region" ecr set-repository-policy \
       --repository-name "$repository_name" \
       --policy-text "file://$repository_policy" \
-      >> "$out_dir/ecr-set-repository-policies.jsonl"
+      >> "$out_dir/ecr-set-repository-policies.jsonl" \
+      2>> "$out_dir/ecr-set-repository-policies.stderr"
   fi
 
   if [[ "$pull_source" == "true" ]]; then
-    docker pull "$source_image" >> "$out_dir/docker-pull.log"
+    docker pull "$source_image" >> "$out_dir/docker-pull.log" 2>> "$out_dir/docker-pull.stderr"
   fi
-  docker image inspect "$source_image" >/dev/null
-  docker tag "$source_image" "$ecr_image"
-  docker push "$ecr_image" >> "$out_dir/docker-push.log"
+  inspect_file="$out_dir/docker-inspect-${pushed_count}.json"
+  docker image inspect "$source_image" > "$inspect_file" 2>> "$out_dir/docker-inspect.stderr"
+  docker tag "$source_image" "$ecr_image" >> "$out_dir/docker-tag.log" 2>> "$out_dir/docker-tag.stderr"
+  docker push "$ecr_image" >> "$out_dir/docker-push.log" 2>> "$out_dir/docker-push.stderr"
   pushed_count=$((pushed_count + 1))
 done < <(tail -n +2 "$image_manifest")
 
