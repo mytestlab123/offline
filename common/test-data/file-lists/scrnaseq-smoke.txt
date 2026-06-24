@@ -1,0 +1,5 @@
+# Minimal nf-core/test-datasets files for scrnaseq mirror-runner validation.
+# This verifies file-list, download, manifest, and config behavior only.
+samplesheet.csv
+testdata/S10_L001_R1_001.fastq.gz
+testdata/S10_L001_R2_001.fastq.gz
